@@ -1,0 +1,1 @@
+# fasna-inventory
