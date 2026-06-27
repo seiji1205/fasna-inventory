@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ファスナ在庫管理</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F4F6F9;
+    --surface: #ffffff;
+    --border: #E2E6ED;
+    --text: #0F1729;
+    --muted: #5E6E8A;
+    --accent: #1B4FD8;
+    --accent-light: #EEF3FF;
+    --danger: #D92D20;
+    --danger-light: #FEF3F2;
+    --warning: #B54708;
+    --warning-light: #FFFAEB;
+    --success: #067647;
+    --success-light: #ECFDF3;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --header-h: 60px;
+    --sidebar-w: 220px;
+  }
+  body { font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ===== HEADER ===== */
+  header { height: var(--header-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 28px; gap: 16px; position: sticky; top: 0; z-index: 100; flex-shrink: 0; }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; margin-right: auto; }
+  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { color: #fff; }
+  .header-btn { height: 40px; padding: 0 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; transition: background 0.15s; font-family: inherit; }
+  .header-btn:hover { background: var(--bg); }
+  .header-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .header-btn.primary:hover { background: #1640b8; }
+
+  /* ===== LAYOUT ===== */
+  .layout { display: flex; flex: 1; min-height: 0; }
+
+  /* ===== SIDEBAR ===== */
+  aside { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 12px; gap: 4px; flex-shrink: 0; }
+  .nav-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; padding: 0 10px; margin: 12px 0 4px; }
+  .nav-label:first-child { margin-top: 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); font-size: 14px; color: var(--muted); cursor: pointer; border: none; background: none; font-family: inherit; width: 100%; text-align: left; transition: all 0.12s; }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+  .nav-item svg { flex-shrink: 0; width: 18px; height: 18px; }
+  .nav-badge { margin-left: auto; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+  .nav-badge.danger { background: var(--danger-light); color: var(--danger); }
+  .nav-badge.warning { background: var(--warning-light); color: var(--warning); }
+
+  /* ===== MAIN ===== */
+  main { flex: 1; overflow-y: auto; padding: 28px 32px; display: flex; flex-direction: column; gap: 0; }
+
+  /* ===== STATS ===== */
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); gap: 16px; margin-bottom: 28px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; }
+  .stat-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-value.danger { color: var(--danger); }
+  .stat-value.warning { color: var(--warning); }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ===== TOOLBAR ===== */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+  .search-wrap { position: relative; flex: 1; max-width: 360px; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 16px; height: 16px; pointer-events: none; }
+  input[type="text"], input[type="number"], input[type="date"], select { height: 38px; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px; font-size: 14px; color: var(--text); background: var(--surface); outline: none; width: 100%; font-family: inherit; }
+  input[type="date"] { cursor: pointer; }
+  .search-wrap input { padding-left: 38px; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(27,79,216,0.1); }
+  .filter-select { width: auto; min-width: 130px; height: 38px; }
+
+  /* ===== BUTTONS ===== */
+  .btn { height: 34px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background 0.12s; font-family: inherit; }
+  .btn:hover { background: var(--bg); }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 12px; }
+  .btn-danger-sm { height: 32px; padding: 0 12px; font-size: 12px; background: var(--danger-light); color: var(--danger); border: 1px solid #FEE4E2; border-radius: var(--radius); cursor: pointer; font-family: inherit; transition: background 0.12s; }
+  .btn-danger-sm:hover { background: #FEE4E2; }
+
+  /* ===== TABLE ===== */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  thead th { background: var(--bg); padding: 11px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; letter-spacing: 0.02em; }
+  thead th.num { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #FAFBFC; }
+  td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.actions { white-space: nowrap; display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+
+  /* ===== BADGES ===== */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-danger { background: var(--danger-light); color: var(--danger); }
+  .badge-warning { background: var(--warning-light); color: var(--warning); }
+  .badge-ok { background: var(--success-light); color: var(--success); }
+
+  /* ===== STOCK BAR ===== */
+  .stock-cell { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .stock-bar { width: 72px; height: 5px; background: var(--border); border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+  .stock-bar-fill { height: 100%; border-radius: 999px; }
+
+  /* ===== ORDER TOGGLE ===== */
+  .order-toggle { height: 30px; padding: 0 12px; font-size: 12px; font-weight: 500; border-radius: var(--radius); border: 1px solid; cursor: pointer; font-family: inherit; transition: all 0.12s; white-space: nowrap; }
+  .order-toggle.unordered { background: var(--bg); color: var(--muted); border-color: var(--border); }
+  .order-toggle.unordered:hover { background: #E8EBF0; color: var(--text); }
+  .order-toggle.ordered { background: var(--accent-light); color: var(--accent); border-color: #C7D9FF; }
+  .order-toggle.ordered:hover { background: #DDEAFF; }
+  .arrival-input { height: 30px; font-size: 12px; padding: 0 8px; width: 130px; min-width: 0; }
+  .arrival-input:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  /* ===== MODAL ===== */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,41,0.35); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.active { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 28px; width: 480px; max-width: calc(100vw - 40px); border: 1px solid var(--border); }
+  .modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 22px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.02em; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .modal-btn { height: 40px; padding: 0 20px; border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .modal-btn:hover { background: var(--bg); }
+  .modal-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .modal-btn.primary:hover { background: #1640b8; }
+  .radio-group { display: flex; gap: 20px; }
+  .radio-group label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--text); font-weight: 400; }
+  .radio-group input[type="radio"] { width: 16px; height: 16px; accent-color: var(--accent); }
+
+  /* ===== EMPTY ===== */
+  .empty { text-align: center; padding: 56px 0; color: var(--muted); font-size: 14px; }
+  .empty svg { width: 40px; height: 40px; color: var(--border); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
+
+  /* ===== SECTION HEADER ===== */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 16px; font-weight: 700; }
+  .section-count { font-size: 13px; color: var(--muted); margin-left: 8px; font-weight: 400; }
+
+  /* ===== iPad / PC breakpoints ===== */
+  @media (max-width: 900px) {
+    :root { --sidebar-w: 60px; }
+    .nav-item span, .nav-label, .nav-badge { display: none; }
+    .nav-item { justify-content: center; padding: 12px; }
+    aside { padding: 12px 8px; }
+    main { padding: 20px 16px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 680px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .header-btn span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+    </div>
+    <span>ファスナ在庫管理</span>
+  </div>
+  <button class="header-btn primary" onclick="openInOut()">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+    <span>入出庫を記録</span>
+  </button>
+  <button class="header-btn" onclick="openAddItem()">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    <span>品目追加</span>
+  </button>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="nav-label">メニュー</div>
+    <button class="nav-item active" onclick="switchView('inventory', this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>在庫一覧</span>
+      <span class="nav-badge danger" id="nav-danger">0</span>
+    </button>
+    <button class="nav-item" onclick="switchView('order', this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>発注管理</span>
+      <span class="nav-badge warning" id="nav-order">0</span>
+    </button>
+    <button class="nav-item" onclick="switchView('log', this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>入出庫履歴</span>
+    </button>
+  </aside>
+
+  <main>
+    <!-- 在庫一覧 -->
+    <div id="view-inventory">
+      <div class="stats">
+        <div class="stat"><div class="stat-label">在庫切れ</div><div class="stat-value danger" id="stat-danger">0</div><div class="stat-sub">要発注</div></div>
+        <div class="stat"><div class="stat-label">在庫切れ間近</div><div class="stat-value warning" id="stat-warning">0</div><div class="stat-sub">要注意</div></div>
+      </div>
+      <div class="section-header">
+        <div><span class="section-title">在庫一覧</span><span class="section-count" id="inv-count"></span></div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="search-wrap" style="max-width:280px;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="search" placeholder="品名・メーカーで検索..." oninput="renderInventory()">
+          </div>
+          <select class="filter-select" id="filter-status" onchange="renderInventory()">
+            <option value="">状態：すべて</option>
+            <option value="danger">在庫切れ</option>
+            <option value="warning">要注意</option>
+            <option value="ok">正常</option>
+          </select>
+          <select class="filter-select" id="filter-cat" onchange="renderInventory()">
+            <option value="">カテゴリー：全て</option>
+            <option value="thru">スペーサー 貫通</option>
+            <option value="nothru">スペーサー 非貫通</option>
+            <option value="stud">スタッド</option>
+            <option value="nut">ナット</option>
+            <option value="other">その他</option>
+          </select>
+          <select class="filter-select" id="filter-maker" onchange="renderInventory()">
+            <option value="">メーカー：全て</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:220px">品名</th>
+                <th style="min-width:110px">メーカー</th>
+                <th class="num" style="min-width:120px">在庫数</th>
+                <th class="num" style="min-width:90px">最低在庫数</th>
+                <th style="min-width:120px">最終入出庫日</th>
+                <th style="min-width:110px">発注状況</th>
+                <th style="min-width:140px">入荷予定日</th>
+                <th style="min-width:80px">状態</th>
+                <th style="min-width:120px"></th>
+              </tr>
+            </thead>
+            <tbody id="inventory-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 発注管理 -->
+    <div id="view-order" style="display:none">
+      <div class="section-header">
+        <div><span class="section-title">発注管理</span><span class="section-count" id="order-count"></span></div>
+        <select class="filter-select" id="order-filter" onchange="renderOrder()">
+          <option value="">すべて表示</option>
+          <option value="unordered">未発注のみ</option>
+          <option value="ordered">発注済みのみ</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:220px">品名</th>
+                <th style="min-width:110px">メーカー</th>
+                <th class="num" style="min-width:110px">在庫数</th>
+                <th class="num" style="min-width:90px">最低在庫数</th>
+                <th style="min-width:110px">発注状況</th>
+                <th style="min-width:140px">入荷予定日</th>
+                <th style="min-width:80px">状態</th>
+              </tr>
+            </thead>
+            <tbody id="order-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 入出庫履歴 -->
+    <div id="view-log" style="display:none">
+      <div class="section-header">
+        <div><span class="section-title">入出庫履歴</span><span class="section-count" id="log-count"></span></div>
+        <div style="display:flex;gap:10px;">
+          <select class="filter-select" id="log-filter-item" onchange="renderLog()"><option value="">品目：全て</option></select>
+          <select class="filter-select" id="log-filter-type" onchange="renderLog()">
+            <option value="">種別：全て</option>
+            <option value="入庫">入庫</option>
+            <option value="出庫">出庫</option>
+          </select>
+          <select class="filter-select" id="log-filter-person" onchange="renderLog()"><option value="">担当者：全て</option></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:150px">日時</th>
+                <th style="min-width:220px">品名</th>
+                <th style="min-width:70px">種別</th>
+                <th class="num" style="min-width:80px">数量</th>
+                <th style="min-width:100px">担当者</th>
+                <th style="min-width:140px">備考</th>
+              </tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 品目追加/編集モーダル -->
+<div class="overlay" id="modal-item">
+  <div class="modal">
+    <h2 id="modal-item-title">品目を追加</h2>
+    <div class="field">
+      <label>品名</label>
+      <input type="text" id="f-name" placeholder="例：DFB-M3-8SC スペーサー 非貫通">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>メーカー</label>
+        <input type="text" id="f-maker" placeholder="例：セルジャパン">
+      </div>
+      <div class="field">
+        <label>最低在庫数（発注点）</label>
+        <input type="number" id="f-min" min="0" placeholder="500">
+      </div>
+    </div>
+    <div class="field">
+      <label>初期在庫数</label>
+      <input type="number" id="f-stock" min="0" placeholder="0">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal('modal-item')">キャンセル</button>
+      <button class="modal-btn primary" onclick="saveItem()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 入出庫モーダル -->
+<div class="overlay" id="modal-inout">
+  <div class="modal">
+    <h2>入出庫を記録</h2>
+    <div class="field">
+      <label>品名</label>
+      <select id="io-item" style="width:100%"></select>
+    </div>
+    <div class="field">
+      <label>種別</label>
+      <div class="radio-group">
+        <label><input type="radio" name="io-type" value="入庫" checked> 入庫</label>
+        <label><input type="radio" name="io-type" value="出庫"> 出庫</label>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>数量</label>
+        <input type="number" id="io-qty" min="1" placeholder="100">
+      </div>
+      <div class="field">
+        <label>担当者名</label>
+        <input type="text" id="io-person" placeholder="氏名">
+      </div>
+    </div>
+    <div class="field">
+      <label>備考（任意）</label>
+      <input type="text" id="io-note" placeholder="">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal('modal-inout')">キャンセル</button>
+      <button class="modal-btn primary" onclick="saveInOut()">記録する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'fasna_inventory_v2';
+const LOG_KEY = 'fasna_log_v2';
+
+const DEFAULT_ITEMS = [
+  { id:1,  name:'DFB-M3-8SC スペーサー 非貫通',  maker:'セルジャパン',  stock:939,  minStock:1000 },
+  { id:2,  name:'DFB-M3-12SC スペーサー 非貫通', maker:'セルジャパン',  stock:1859, minStock:800  },
+  { id:3,  name:'DFB-M4-7S スペーサー 貫通',     maker:'セルジャパン',  stock:114,  minStock:500  },
+  { id:4,  name:'DFB-M4-9S スペーサー 貫通',     maker:'セルジャパン',  stock:200,  minStock:500  },
+  { id:5,  name:'PDF6.2-M2-6 スペーサー 貫通',   maker:'スタッドテック', stock:2282, minStock:500  },
+  { id:6,  name:'PDF-M3-4 スペーサー 貫通',      maker:'スタッドテック', stock:1762, minStock:500  },
+  { id:7,  name:'PDF-M3-10 スペーサー 貫通',     maker:'スタッドテック', stock:978,  minStock:500  },
+  { id:8,  name:'PDF-M3-12 スペーサー 貫通',     maker:'スタッドテック', stock:1723, minStock:500  },
+  { id:9,  name:'PDF-M3-19 スペーサー 貫通',     maker:'スタッドテック', stock:590,  minStock:100  },
+  { id:10, name:'PDF-M4-7スペーサー貫通',         maker:'スタッドテック', stock:300,  minStock:0    },
+  { id:11, name:'PDF-M4-9 スペーサー 貫通',      maker:'スタッドテック', stock:1974, minStock:500  },
+  { id:12, name:'PDF-M4-10 スペーサー 貫通',     maker:'スタッドテック', stock:547,  minStock:500  },
+  { id:13, name:'PBDF-M4-10 スペーサー 非貫通',  maker:'スタッドテック', stock:1180, minStock:500  },
+  { id:14, name:'PBDF-M4-12 スペーサー 非貫通',  maker:'スタッドテック', stock:801,  minStock:500  },
+  { id:15, name:'ST-M3-6 スタッド',              maker:'セルジャパン',  stock:2864, minStock:1800 },
+  { id:16, name:'PH-M3-10スタッド',              maker:'スタッドテック', stock:37,   minStock:0    },
+  { id:17, name:'PH-M4-10 スタッド',             maker:'スタッドテック', stock:2176, minStock:500  },
+  { id:18, name:'PC-M5-2 ナット',                maker:'スタッドテック', stock:875,  minStock:500  },
+  { id:19, name:'PC-M6-2 ナット',                maker:'スタッドテック', stock:267,  minStock:500  },
+  { id:20, name:'PC-M6-3 ナット',                maker:'スタッドテック', stock:1375, minStock:500  },
+];
+
+let items = [], logs = [], editingId = null, nextId = 100;
+
+function load() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    items = d ? JSON.parse(d) : JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+    const l = localStorage.getItem(LOG_KEY);
+    logs = l ? JSON.parse(l) : [];
+    nextId = items.length ? Math.max(...items.map(i => i.id)) + 1 : 100;
+  } catch(e) { items = JSON.parse(JSON.stringify(DEFAULT_ITEMS)); logs = []; }
+}
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); localStorage.setItem(LOG_KEY, JSON.stringify(logs)); } catch(e) {}
+}
+
+function status(item) {
+  if (!item.minStock) return 'ok';
+  if (item.stock <= 0 || item.stock < item.minStock) return 'danger';
+  if (item.stock < item.minStock * 1.3) return 'warning';
+  return 'ok';
+}
+
+function statusBadge(item) {
+  const s = status(item);
+  if (s === 'danger') return '<span class="badge badge-danger">在庫切れ</span>';
+  if (s === 'warning') return '<span class="badge badge-warning">要注意</span>';
+  return '<span class="badge badge-ok">正常</span>';
+}
+
+function barColor(s) { return s==='danger'?'#D92D20':s==='warning'?'#F79009':'#17B26A'; }
+function barWidth(item) { if (!item.minStock) return 100; return Math.min(100, Math.round(item.stock/(item.minStock*1.5)*100)); }
+
+function lastLogOf(name) { return [...logs].reverse().find(l => l.name === name); }
+
+function orderToggleHTML(item) {
+  const cls = item.ordered ? 'ordered' : 'unordered';
+  const label = item.ordered ? '✓ 発注済み' : '未発注';
+  return `<button class="order-toggle ${cls}" onclick="toggleOrder(${item.id})">${label}</button>`;
+}
+
+function arrivalHTML(item) {
+  const dis = item.ordered ? '' : 'disabled';
+  const val = item.arrivalDate || '';
+  return `<input type="date" class="arrival-input" value="${val}" ${dis} onchange="saveArrival(${item.id},this.value)">`;
+}
+
+function updateStats() {
+  const nd = items.filter(i => status(i)==='danger').length;
+  const nw = items.filter(i => status(i)==='warning').length;
+  const no = items.filter(i => i.ordered).length;
+  document.getElementById('stat-danger').textContent = nd;
+  document.getElementById('stat-warning').textContent = nw;
+  document.getElementById('nav-danger').textContent = nd;
+  document.getElementById('nav-order').textContent = no;
+}
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const sf = document.getElementById('filter-status').value;
+  const mf = document.getElementById('filter-maker').value;
+  const cf = document.getElementById('filter-cat').value;
+  return items.filter(item => {
+    if (q && !item.name.toLowerCase().includes(q) && !item.maker.toLowerCase().includes(q)) return false;
+    if (sf && status(item) !== sf) return false;
+    if (mf && item.maker !== mf) return false;
+    if (cf && getCategory(item) !== cf) return false;
+    return true;
+  });
+}
+
+const CAT_ICONS = {
+  thru:   `<img src="data:image/png;base64,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" width="44" height="44" style="object-fit:contain;display:block;">`,
+  nothru: `<img src="data:image/png;base64,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" width="44" height="44" style="object-fit:contain;display:block;">`,
+  stud:   `<img src="data:image/png;base64,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" width="44" height="44" style="object-fit:contain;display:block;">`,
+  nut:    `<img src="data:image/png;base64,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" width="44" height="44" style="object-fit:contain;display:block;">`,
+  other:  `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+};
+
+const CAT_COLORS = {
+  thru:   { bg: '#EEF3FF', color: '#1B4FD8' },
+  nothru: { bg: '#F0F4FF', color: '#067647' },
+  stud:   { bg: '#F0F4FF', color: '#1B4FD8' },
+  nut:    { bg: '#F0F4FF', color: '#1B4FD8' },
+  other:  { bg: '#F4F6F9', color: '#5E6E8A' },
+};
+
+const CATEGORIES = [
+  { key: 'thru',    label: 'スペーサー 貫通',  test: item => item.name.includes('スペーサ') && !item.name.includes('非貫通') },
+  { key: 'nothru',  label: 'スペーサー 非貫通', test: item => item.name.includes('スペーサ') && item.name.includes('非貫通') },
+  { key: 'stud',    label: 'スタッド',          test: item => item.name.includes('スタッド') },
+  { key: 'nut',     label: 'ナット',            test: item => item.name.includes('ナット') },
+  { key: 'other',   label: 'その他',            test: () => true },
+];
+
+function getCategory(item) {
+  for (const cat of CATEGORIES) { if (cat.test(item)) return cat.key; }
+  return 'other';
+}
+
+function itemRowHTML(item) {
+  const ll = lastLogOf(item.name);
+  const lastDate = ll ? ll.ts.slice(0,10) : '—';
+  const lastTypeStr = ll ? `<span style="font-size:11px;color:var(--muted);margin-left:4px">${ll.type}</span>` : '';
+  const st = status(item);
+  return `<tr>
+    <td style="font-weight:500">${item.name}</td>
+    <td style="color:var(--muted)">${item.maker}</td>
+    <td class="num">
+      <div class="stock-cell">
+        <span style="font-weight:700;font-size:17px">${item.stock.toLocaleString()}</span>
+        <div class="stock-bar"><div class="stock-bar-fill" style="width:${barWidth(item)}%;background:${barColor(st)}"></div></div>
+      </div>
+    </td>
+    <td class="num" style="color:var(--muted)">${item.minStock.toLocaleString()}</td>
+    <td style="font-size:12px;color:var(--muted)">${lastDate}${lastTypeStr}</td>
+    <td>${orderToggleHTML(item)}</td>
+    <td>${arrivalHTML(item)}</td>
+    <td>${statusBadge(item)}</td>
+    <td class="actions">
+      <button class="btn btn-sm" onclick="openEditItem(${item.id})">編集</button>
+      <button class="btn-danger-sm" onclick="deleteItem(${item.id})">削除</button>
+    </td>
+  </tr>`;
+}
+
+function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
+  const alerts = [];
+  if (dangerCount) alerts.push(`<span style="font-size:11px;font-weight:600;background:var(--danger-light);color:var(--danger);padding:2px 8px;border-radius:999px">${dangerCount}件 在庫切れ</span>`);
+  if (warningCount) alerts.push(`<span style="font-size:11px;font-weight:600;background:var(--warning-light);color:var(--warning);padding:2px 8px;border-radius:999px">${warningCount}件 要注意</span>`);
+  const c = CAT_COLORS[key] || CAT_COLORS.other;
+  const icon = CAT_ICONS[key] || CAT_ICONS.other;
+  return `<tr class="cat-header-row">
+    <td colspan="9" style="padding:14px 16px 10px;background:var(--bg);border-bottom:2px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:52px;height:52px;border-radius:10px;background:${c.bg};color:${c.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
+        <span style="font-size:14px;font-weight:700;color:var(--text)">${label}</span>
+        <span style="font-size:12px;color:var(--muted)">${count}品目</span>
+        ${alerts.join('')}
+      </div>
+    </td>
+  </tr>`;
+}
+
+function renderInventory() {
+  updateStats();
+  updateMakerFilter();
+  const filtered = getFiltered();
+  document.getElementById('inv-count').textContent = `（${filtered.length}件）`;
+  const tbody = document.getElementById('inventory-body');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
+    return;
+  }
+  let html = '';
+  for (const cat of CATEGORIES) {
+    const group = filtered.filter(item => getCategory(item) === cat.key);
+    if (!group.length) continue;
+    const dc = group.filter(i => status(i)==='danger').length;
+    const wc = group.filter(i => status(i)==='warning').length;
+    html += categoryHeaderHTML(cat.key, cat.label, group.length, dc, wc);
+    html += group.map(itemRowHTML).join('');
+  }
+  tbody.innerHTML = html;
+}
+
+function updateMakerFilter() {
+  const sel = document.getElementById('filter-maker');
+  const cur = sel.value;
+  const makers = [...new Set(items.map(i=>i.maker))].sort();
+  sel.innerHTML = '<option value="">メーカー：全て</option>' + makers.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');
+}
+
+function renderOrder() {
+  const f = document.getElementById('order-filter').value;
+  let list = items.filter(i => status(i)==='danger' || status(i)==='warning' || i.ordered);
+  if (f==='unordered') list = list.filter(i=>!i.ordered);
+  if (f==='ordered') list = list.filter(i=>i.ordered);
+  document.getElementById('order-count').textContent = `（${list.length}件）`;
+  const tbody = document.getElementById('order-body');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>対象の品目はありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(item => {
+    const st = status(item);
+    return `<tr>
+      <td style="font-weight:500">${item.name}</td>
+      <td style="color:var(--muted)">${item.maker}</td>
+      <td class="num" style="font-weight:700;font-size:17px">${item.stock.toLocaleString()}</td>
+      <td class="num" style="color:var(--muted)">${item.minStock.toLocaleString()}</td>
+      <td>${orderToggleHTML(item)}</td>
+      <td>${arrivalHTML(item)}</td>
+      <td>${statusBadge(item)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderLog() {
+  const itemF = document.getElementById('log-filter-item').value;
+  const typeF = document.getElementById('log-filter-type').value;
+  const personF = document.getElementById('log-filter-person').value;
+  const filtered = [...logs].reverse().filter(l => {
+    if (itemF && l.name!==itemF) return false;
+    if (typeF && l.type!==typeF) return false;
+    if (personF && l.person!==personF) return false;
+    return true;
+  });
+  document.getElementById('log-count').textContent = `（${filtered.length}件）`;
+  const tbody = document.getElementById('log-body');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>履歴がありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(l=>`<tr>
+    <td style="color:var(--muted);font-size:12px">${l.ts}</td>
+    <td>${l.name}</td>
+    <td><span class="badge ${l.type==='入庫'?'badge-ok':'badge-warning'}">${l.type}</span></td>
+    <td class="num" style="font-weight:500">${l.qty.toLocaleString()}</td>
+    <td>${l.person}</td>
+    <td style="color:var(--muted);font-size:13px">${l.note||''}</td>
+  </tr>`).join('');
+  updateLogFilters();
+}
+
+function updateLogFilters() {
+  const iSel = document.getElementById('log-filter-item');
+  const pSel = document.getElementById('log-filter-person');
+  const iCur = iSel.value, pCur = pSel.value;
+  iSel.innerHTML = '<option value="">品目：全て</option>' + [...new Set(items.map(i=>i.name))].sort().map(n=>`<option value="${n}"${n===iCur?' selected':''}>${n}</option>`).join('');
+  pSel.innerHTML = '<option value="">担当者：全て</option>' + [...new Set(logs.map(l=>l.person).filter(Boolean))].sort().map(p=>`<option value="${p}"${p===pCur?' selected':''}>${p}</option>`).join('');
+}
+
+let currentView = 'inventory';
+function switchView(view, btn) {
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['inventory','order','log'].forEach(v => { document.getElementById('view-'+v).style.display = v===view?'':'none'; });
+  currentView = view;
+  if (view==='inventory') renderInventory();
+  if (view==='order') renderOrder();
+  if (view==='log') renderLog();
+}
+
+function openAddItem() {
+  editingId = null;
+  document.getElementById('modal-item-title').textContent = '品目を追加';
+  ['f-name','f-maker','f-min','f-stock'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('modal-item').classList.add('active');
+}
+function openEditItem(id) {
+  const item = items.find(i=>i.id===id); if(!item) return;
+  editingId = id;
+  document.getElementById('modal-item-title').textContent = '品目を編集';
+  document.getElementById('f-name').value = item.name;
+  document.getElementById('f-maker').value = item.maker;
+  document.getElementById('f-min').value = item.minStock;
+  document.getElementById('f-stock').value = item.stock;
+  document.getElementById('modal-item').classList.add('active');
+}
+function saveItem() {
+  const name = document.getElementById('f-name').value.trim();
+  const maker = document.getElementById('f-maker').value.trim();
+  const minStock = parseInt(document.getElementById('f-min').value)||0;
+  const stock = parseInt(document.getElementById('f-stock').value)||0;
+  if (!name) { alert('品名を入力してください'); return; }
+  if (editingId) { const item=items.find(i=>i.id===editingId); item.name=name; item.maker=maker; item.minStock=minStock; item.stock=stock; }
+  else { items.push({id:nextId++, name, maker, stock, minStock, ordered:false, arrivalDate:''}); }
+  save(); closeModal('modal-item');
+  if (currentView==='inventory') renderInventory();
+  else if (currentView==='order') renderOrder();
+}
+function deleteItem(id) {
+  const item=items.find(i=>i.id===id); if(!item) return;
+  if (!confirm(`「${item.name}」を削除してもよいですか？`)) return;
+  items=items.filter(i=>i.id!==id); save(); renderInventory();
+}
+function toggleOrder(id) {
+  const item=items.find(i=>i.id===id); if(!item) return;
+  item.ordered=!item.ordered; if(!item.ordered) item.arrivalDate='';
+  save();
+  if (currentView==='inventory') renderInventory();
+  else if (currentView==='order') renderOrder();
+}
+function saveArrival(id,val) {
+  const item=items.find(i=>i.id===id); if(!item) return;
+  item.arrivalDate=val; save();
+}
+function openInOut() {
+  const sel=document.getElementById('io-item');
+  sel.innerHTML=items.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+  ['io-qty','io-person','io-note'].forEach(id=>document.getElementById(id).value='');
+  document.querySelector('input[name="io-type"][value="入庫"]').checked=true;
+  document.getElementById('modal-inout').classList.add('active');
+}
+function saveInOut() {
+  const itemId=parseInt(document.getElementById('io-item').value);
+  const type=document.querySelector('input[name="io-type"]:checked').value;
+  const qty=parseInt(document.getElementById('io-qty').value);
+  const person=document.getElementById('io-person').value.trim();
+  const note=document.getElementById('io-note').value.trim();
+  if (!qty||qty<=0) { alert('数量を入力してください'); return; }
+  if (!person) { alert('担当者名を入力してください'); return; }
+  const item=items.find(i=>i.id===itemId); if(!item) return;
+  if (type==='出庫'&&item.stock<qty) { if(!confirm(`在庫数(${item.stock.toLocaleString()})より多い数量です。続けますか？`)) return; }
+  item.stock+=(type==='入庫'?qty:-qty);
+  const now=new Date();
+  const ts=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  logs.push({ts, name:item.name, type, qty, person, note});
+  save(); closeModal('modal-inout');
+  if (currentView==='inventory') renderInventory();
+  else if (currentView==='order') renderOrder();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.overlay').forEach(el=>{ el.addEventListener('click', e=>{ if(e.target===el) el.classList.remove('active'); }); });
+
+load();
+renderInventory();
+</script>
+</body>
+</html>
