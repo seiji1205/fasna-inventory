@@ -293,11 +293,11 @@
             <thead>
               <tr>
                 <th style="min-width:220px">品名</th>
-                <th style="min-width:90px">品番</th>
-                <th style="min-width:150px">品名</th>
-                <th class="num" style="min-width:100px">在庫数（個）</th>
+                <th style="min-width:90px;cursor:pointer" onclick="toggleSort('order','code',renderOrder)">品番 <span id="sa-order-code"></span></th>
+                <th style="min-width:150px;cursor:pointer" onclick="toggleSort('order','name',renderOrder)">品名 <span id="sa-order-name"></span></th>
+                <th class="num" style="min-width:100px;cursor:pointer" onclick="toggleSort('order','stock',renderOrder)">在庫数（個）</th>
                 <th class="num" style="min-width:80px">最低在庫数</th>
-                <th style="min-width:80px">状態</th>
+                <th style="min-width:80px;cursor:pointer" onclick="toggleSort('order','status',renderOrder)">状態</th>
                 <th style="min-width:110px">発注状況</th>
                 <th style="min-width:130px">入荷予定日</th>
                 <th class="num" style="min-width:110px">入荷予定数（個）</th>
@@ -405,9 +405,9 @@
           <table>
             <thead>
               <tr>
-                <th style="min-width:100px">品番</th>
-                <th style="min-width:160px">品名</th>
-                <th style="min-width:80px">サイズ(mm)</th>
+                <th style="min-width:100px;cursor:pointer" onclick="toggleSort('stocktake','code',renderStocktake)">品番</th>
+                <th style="min-width:160px;cursor:pointer" onclick="toggleSort('stocktake','name',renderStocktake)">品名</th>
+                <th style="min-width:80px;cursor:pointer" onclick="toggleSort('stocktake','size',renderStocktake)">サイズ(mm)</th>
                 <th style="min-width:100px">メーカー</th>
                 <th class="num" style="min-width:110px">現在庫数（個）</th>
                 <th style="min-width:140px">実在庫数（入力）</th>
@@ -560,6 +560,7 @@ function generateId() {
 }
 
 let items = [], logs = [], editLogs = [], editingId = null, nextId = 100;
+let sortState = { inv: {key:'code', dir:1}, order: {key:'code', dir:1}, stocktake: {key:'code', dir:1} };
 let syncStatus = 'idle'; // idle | syncing | ok | error
 
 // ===== GAS通信 =====
@@ -823,11 +824,11 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
     </td>
   </tr>
   <tr style="background:var(--bg);border-bottom:2px solid var(--border);">
-    <th class="col-code" style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:90px">品番</th>
-    <th class="col-name" style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:140px">品名</th>
-    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:75px">サイズ(mm)</th>
-    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:55px">状態</th>
-    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:right;min-width:100px">在庫数（個）</th>
+    <th class="col-code" style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:90px;cursor:pointer" onclick="toggleSort('inv','code',renderInventory)">品番${sortArrow('inv','code')}</th>
+    <th class="col-name" style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:140px;cursor:pointer" onclick="toggleSort('inv','name',renderInventory)">品名${sortArrow('inv','name')}</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:75px;cursor:pointer" onclick="toggleSort('inv','size',renderInventory)">サイズ(mm)${sortArrow('inv','size')}</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:55px;cursor:pointer" onclick="toggleSort('inv','status',renderInventory)">状態${sortArrow('inv','status')}</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:right;min-width:100px;cursor:pointer" onclick="toggleSort('inv','stock',renderInventory)">在庫数（個）${sortArrow('inv','stock')}</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:right;min-width:70px">最低在庫数</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:95px">最終入出庫日</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:90px">発注状況</th>
@@ -842,6 +843,39 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
   </tr>`;
 }
 
+// ===== ソート =====
+const STATUS_ORDER = { danger: 0, warning: 1, ok: 2 };
+
+function sortItems(arr, key, dir) {
+  return [...arr].sort((a, b) => {
+    let va, vb;
+    if (key === 'code')   { va = a.code||''; vb = b.code||''; }
+    else if (key === 'name')   { va = a.name||''; vb = b.name||''; }
+    else if (key === 'status') { va = STATUS_ORDER[status(a)]??9; vb = STATUS_ORDER[status(b)]??9; return (va-vb)*dir; }
+    else if (key === 'stock')  { return (a.stock - b.stock) * dir; }
+    else if (key === 'maker')  { va = a.maker||''; vb = b.maker||''; }
+    else if (key === 'size')   { va = a.size||''; vb = b.size||''; }
+    else return 0;
+    return va.localeCompare(vb, 'ja') * dir;
+  });
+}
+
+function sortArrow(view, key) {
+  const s = sortState[view];
+  if (s.key !== key) return '<span style="color:#94A3B8;margin-left:4px">⇅</span>';
+  return s.dir === 1
+    ? '<span style="color:#1B4FD8;margin-left:4px;font-size:14px">▲</span>'
+    : '<span style="color:#1B4FD8;margin-left:4px;font-size:14px">▼</span>';
+}
+
+function toggleSort(view, key, renderFn) {
+  const s = sortState[view];
+  if (s.key === key) s.dir *= -1;
+  else { s.key = key; s.dir = 1; }
+  renderFn();
+}
+
+
 function renderInventory() {
   updateStats();
   updateMakerFilter();
@@ -852,16 +886,15 @@ function renderInventory() {
     tbody.innerHTML = `<tr><td colspan="16" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
     return;
   }
+  const s = sortState.inv;
   const grouped = {};
   CATEGORIES.forEach(cat => grouped[cat.key] = []);
-  filtered.forEach(item => {
-    const key = getCategory(item);
-    grouped[key].push(item);
-  });
+  filtered.forEach(item => { grouped[getCategory(item)].push(item); });
   let html = '';
   for (const cat of CATEGORIES) {
-    const group = grouped[cat.key];
+    let group = grouped[cat.key];
     if (!group.length) continue;
+    if (s.key) group = sortItems(group, s.key, s.dir);
     const dc = group.filter(i => !i.inactive && status(i)==='danger').length;
     const wc = group.filter(i => !i.inactive && status(i)==='warning').length;
     html += categoryHeaderHTML(cat.key, cat.label, group.length, dc, wc);
@@ -882,6 +915,8 @@ function renderOrder() {
   let list = items.filter(i => !i.inactive && (status(i)==='danger' || status(i)==='warning' || i.ordered));
   if (f==='unordered') list = list.filter(i=>!i.ordered);
   if (f==='ordered') list = list.filter(i=>i.ordered);
+  const so = sortState.order;
+  if (so.key) list = sortItems(list, so.key, so.dir);
   document.getElementById('order-count').textContent = `（${list.length}件）`;
   const tbody = document.getElementById('order-body');
   if (!list.length) {
@@ -1106,7 +1141,9 @@ async function saveInOut() {
 }
 function renderStocktake() {
   const tbody = document.getElementById('stocktake-body');
-  tbody.innerHTML = items.filter(i=>!i.inactive).map(item => {
+  const ss = sortState.stocktake;
+  const stList = ss.key ? sortItems(items.filter(i=>!i.inactive), ss.key, ss.dir) : items.filter(i=>!i.inactive);
+  tbody.innerHTML = stList.map(item => {
     const st = status(item);
     const color = st==='danger'?'var(--danger)':st==='warning'?'var(--warning)':'var(--text)';
     return `<tr>
