@@ -105,7 +105,7 @@
   tbody tr:hover .col-name { background: #BDCFE8; }
 
   /* ===== BADGES ===== */
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 999px; font-size: 10px; font-weight: 600; white-space: nowrap; }
   .badge-danger { background: var(--danger-light); color: var(--danger); }
   .badge-warning { background: var(--warning-light); color: var(--warning); }
   .badge-ok { background: var(--success-light); color: var(--success); }
@@ -545,6 +545,7 @@ function itemRowHTML(item) {
     <td class="col-code" style="font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap">${item.code||'—'}</td>
     <td class="col-name" style="font-weight:500">${item.name}</td>
     <td style="font-size:12px;color:var(--muted)">${item.size||'—'}</td>
+    <td>${statusBadge(item)}</td>
     <td class="num">
       <div class="stock-cell">
         <span style="font-weight:700;font-size:17px">${item.stock.toLocaleString()}</span>
@@ -555,7 +556,6 @@ function itemRowHTML(item) {
     <td style="font-size:12px;color:var(--muted)">${lastDate}${lastTypeStr}</td>
     <td>${orderToggleHTML(item)}</td>
     <td>${arrivalHTML(item)}</td>
-    <td>${statusBadge(item)}</td>
     <td style="font-size:12px;color:var(--muted)">${item.itemNote||''}</td>
     <td style="color:var(--muted);font-size:12px">${item.maker}</td>
     <td style="font-size:12px;color:var(--muted)">${item.hole||'—'}</td>
@@ -586,12 +586,12 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
     <th class="col-code" style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">品番</th>
     <th class="col-name" style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:140px">品名</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:75px">サイズ(mm)</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:55px">状態</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:right;min-width:100px">在庫数（個）</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:right;min-width:70px">最低在庫数</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:95px">最終入出庫日</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">発注状況</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:115px">入荷予定日</th>
-    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:65px">状態</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:110px">備考</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">メーカー</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:100px">板金側下穴径</th>
