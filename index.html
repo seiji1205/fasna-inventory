@@ -132,7 +132,7 @@
   .radio-group label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--text); font-weight: 400; }
   .radio-group input[type="radio"] { width: 16px; height: 16px; accent-color: var(--accent); }
 
-  /* ===== EMPTY ===== */
+  .cat-header-row td { border-top: 8px solid var(--bg) !important; }
   .empty { text-align: center; padding: 56px 0; color: var(--muted); font-size: 14px; }
   .empty svg { width: 40px; height: 40px; color: var(--border); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto; }
 
@@ -230,7 +230,7 @@
       <div class="table-wrap">
         <div class="table-scroll">
           <table>
-            <thead>
+          <thead style="display:none">
               <tr>
                 <th style="min-width:180px">品名</th>
                 <th style="min-width:90px">メーカー</th>
@@ -318,9 +318,15 @@
 <div class="overlay" id="modal-item">
   <div class="modal">
     <h2 id="modal-item-title">品目を追加</h2>
-    <div class="field">
-      <label>品名</label>
-      <input type="text" id="f-name" placeholder="例：DFB-M3-8SC スペーサー 非貫通">
+    <div class="field-row">
+      <div class="field">
+        <label>品番</label>
+        <input type="text" id="f-code" placeholder="例：DFB-M3-8SC">
+      </div>
+      <div class="field">
+        <label>品名</label>
+        <input type="text" id="f-name" placeholder="例：スペーサー 非貫通">
+      </div>
     </div>
     <div class="field-row">
       <div class="field">
@@ -335,6 +341,20 @@
     <div class="field">
       <label>初期在庫数</label>
       <input type="number" id="f-stock" min="0" placeholder="0">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>サイズ(mm)</label>
+        <input type="text" id="f-size" placeholder="例：M3×8">
+      </div>
+      <div class="field">
+        <label>板金側下穴径 (mm)</label>
+        <input type="text" id="f-hole" placeholder="例：3.3">
+      </div>
+    </div>
+    <div class="field">
+      <label>備考</label>
+      <input type="text" id="f-note" placeholder="例：適用板厚 1.0〜3.2mm">
     </div>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeModal('modal-item')">キャンセル</button>
@@ -384,26 +404,26 @@ const STORAGE_KEY = 'fasna_inventory_v2';
 const LOG_KEY = 'fasna_log_v2';
 
 const DEFAULT_ITEMS = [
-  { id:1,  name:'DFB-M3-8SC スペーサー 非貫通',  maker:'セルジャパン',  stock:939,  minStock:1000 },
-  { id:2,  name:'DFB-M3-12SC スペーサー 非貫通', maker:'セルジャパン',  stock:1859, minStock:800  },
-  { id:3,  name:'DFB-M4-7S スペーサー 貫通',     maker:'セルジャパン',  stock:114,  minStock:500  },
-  { id:4,  name:'DFB-M4-9S スペーサー 貫通',     maker:'セルジャパン',  stock:200,  minStock:500  },
-  { id:5,  name:'PDF6.2-M2-6 スペーサー 貫通',   maker:'スタッドテック', stock:2282, minStock:500  },
-  { id:6,  name:'PDF-M3-4 スペーサー 貫通',      maker:'スタッドテック', stock:1762, minStock:500  },
-  { id:7,  name:'PDF-M3-10 スペーサー 貫通',     maker:'スタッドテック', stock:978,  minStock:500  },
-  { id:8,  name:'PDF-M3-12 スペーサー 貫通',     maker:'スタッドテック', stock:1723, minStock:500  },
-  { id:9,  name:'PDF-M3-19 スペーサー 貫通',     maker:'スタッドテック', stock:590,  minStock:100  },
-  { id:10, name:'PDF-M4-7スペーサー貫通',         maker:'スタッドテック', stock:300,  minStock:0    },
-  { id:11, name:'PDF-M4-9 スペーサー 貫通',      maker:'スタッドテック', stock:1974, minStock:500  },
-  { id:12, name:'PDF-M4-10 スペーサー 貫通',     maker:'スタッドテック', stock:547,  minStock:500  },
-  { id:13, name:'PBDF-M4-10 スペーサー 非貫通',  maker:'スタッドテック', stock:1180, minStock:500  },
-  { id:14, name:'PBDF-M4-12 スペーサー 非貫通',  maker:'スタッドテック', stock:801,  minStock:500  },
-  { id:15, name:'ST-M3-6 スタッド',              maker:'セルジャパン',  stock:2864, minStock:1800 },
-  { id:16, name:'PH-M3-10スタッド',              maker:'スタッドテック', stock:37,   minStock:0    },
-  { id:17, name:'PH-M4-10 スタッド',             maker:'スタッドテック', stock:2176, minStock:500  },
-  { id:18, name:'PC-M5-2 ナット',                maker:'スタッドテック', stock:875,  minStock:500  },
-  { id:19, name:'PC-M6-2 ナット',                maker:'スタッドテック', stock:267,  minStock:500  },
-  { id:20, name:'PC-M6-3 ナット',                maker:'スタッドテック', stock:1375, minStock:500  },
+  { id:1,  code:'DFB-M3-8SC',   name:'スペーサー 非貫通', maker:'セルジャパン',  stock:939,  minStock:1000 },
+  { id:2,  code:'DFB-M3-12SC',  name:'スペーサー 非貫通', maker:'セルジャパン',  stock:1859, minStock:800  },
+  { id:3,  code:'DFB-M4-7S',    name:'スペーサー 貫通',   maker:'セルジャパン',  stock:114,  minStock:500  },
+  { id:4,  code:'DFB-M4-9S',    name:'スペーサー 貫通',   maker:'セルジャパン',  stock:200,  minStock:500  },
+  { id:5,  code:'PDF6.2-M2-6',  name:'スペーサー 貫通',   maker:'スタッドテック', stock:2282, minStock:500  },
+  { id:6,  code:'PDF-M3-4',     name:'スペーサー 貫通',   maker:'スタッドテック', stock:1762, minStock:500  },
+  { id:7,  code:'PDF-M3-10',    name:'スペーサー 貫通',   maker:'スタッドテック', stock:978,  minStock:500  },
+  { id:8,  code:'PDF-M3-12',    name:'スペーサー 貫通',   maker:'スタッドテック', stock:1723, minStock:500  },
+  { id:9,  code:'PDF-M3-19',    name:'スペーサー 貫通',   maker:'スタッドテック', stock:590,  minStock:100  },
+  { id:10, code:'PDF-M4-7',     name:'スペーサー 貫通',   maker:'スタッドテック', stock:300,  minStock:0    },
+  { id:11, code:'PDF-M4-9',     name:'スペーサー 貫通',   maker:'スタッドテック', stock:1974, minStock:500  },
+  { id:12, code:'PDF-M4-10',    name:'スペーサー 貫通',   maker:'スタッドテック', stock:547,  minStock:500  },
+  { id:13, code:'PBDF-M4-10',   name:'スペーサー 非貫通', maker:'スタッドテック', stock:1180, minStock:500  },
+  { id:14, code:'PBDF-M4-12',   name:'スペーサー 非貫通', maker:'スタッドテック', stock:801,  minStock:500  },
+  { id:15, code:'ST-M3-6',      name:'スタッド',          maker:'セルジャパン',  stock:2864, minStock:1800 },
+  { id:16, code:'PH-M3-10',     name:'スタッド',          maker:'スタッドテック', stock:37,   minStock:0    },
+  { id:17, code:'PH-M4-10',     name:'スタッド',          maker:'スタッドテック', stock:2176, minStock:500  },
+  { id:18, code:'PC-M5-2',      name:'ナット',            maker:'スタッドテック', stock:875,  minStock:500  },
+  { id:19, code:'PC-M6-2',      name:'ナット',            maker:'スタッドテック', stock:267,  minStock:500  },
+  { id:20, code:'PC-M6-3',      name:'ナット',            maker:'スタッドテック', stock:1375, minStock:500  },
 ];
 
 let items = [], logs = [], editingId = null, nextId = 100;
@@ -469,7 +489,7 @@ function getFiltered() {
   const mf = document.getElementById('filter-maker').value;
   const cf = document.getElementById('filter-cat').value;
   return items.filter(item => {
-    if (q && !item.name.toLowerCase().includes(q) && !item.maker.toLowerCase().includes(q)) return false;
+    if (q && !item.name.toLowerCase().includes(q) && !(item.code||'').toLowerCase().includes(q) && !item.maker.toLowerCase().includes(q)) return false;
     if (sf && status(item) !== sf) return false;
     if (mf && item.maker !== mf) return false;
     if (cf && getCategory(item) !== cf) return false;
@@ -512,8 +532,9 @@ function itemRowHTML(item) {
   const lastTypeStr = ll ? `<span style="font-size:11px;color:var(--muted);margin-left:4px">${ll.type}</span>` : '';
   const st = status(item);
   return `<tr>
+    <td style="font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap">${item.code||'—'}</td>
     <td style="font-weight:500">${item.name}</td>
-    <td style="color:var(--muted)">${item.maker}</td>
+    <td style="font-size:12px;color:var(--muted)">${item.size||'—'}</td>
     <td class="num">
       <div class="stock-cell">
         <span style="font-weight:700;font-size:17px">${item.stock.toLocaleString()}</span>
@@ -522,9 +543,12 @@ function itemRowHTML(item) {
     </td>
     <td class="num" style="color:var(--muted)">${item.minStock.toLocaleString()}</td>
     <td style="font-size:12px;color:var(--muted)">${lastDate}${lastTypeStr}</td>
+    <td style="font-size:12px;color:var(--muted)">${item.hole||'—'}</td>
+    <td style="font-size:12px;color:var(--muted)">${item.itemNote||''}</td>
     <td>${orderToggleHTML(item)}</td>
     <td>${arrivalHTML(item)}</td>
     <td>${statusBadge(item)}</td>
+    <td style="color:var(--muted);font-size:12px">${item.maker}</td>
     <td class="actions">
       <button class="btn btn-sm" onclick="openEditItem(${item.id})">編集</button>
       <button class="btn-danger-sm" onclick="deleteItem(${item.id})">削除</button>
@@ -539,14 +563,29 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
   const c = CAT_COLORS[key] || CAT_COLORS.other;
   const icon = CAT_ICONS[key] || CAT_ICONS.other;
   return `<tr class="cat-header-row">
-    <td colspan="9" style="padding:14px 16px 10px;background:var(--bg);border-bottom:2px solid var(--border);">
+    <td colspan="12" style="padding:16px 16px 10px;background:var(--bg);border-bottom:none;">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:80px;height:80px;border-radius:12px;background:${c.bg};color:${c.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
-        <span style="font-size:14px;font-weight:700;color:var(--text)">${label}</span>
+        <span style="font-size:20px;font-weight:700;color:var(--text)">${label}</span>
         <span style="font-size:12px;color:var(--muted)">${count}品目</span>
         ${alerts.join('')}
       </div>
     </td>
+  </tr>
+  <tr style="background:var(--bg);border-bottom:2px solid var(--border);">
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">品番</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:140px">品名</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:75px">サイズ(mm)</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:right;min-width:100px">在庫数</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:right;min-width:70px">最低在庫数</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:95px">最終入出庫日</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">板金側下穴径</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:110px">備考</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">発注状況</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:115px">入荷予定日</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:65px">状態</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">メーカー</th>
+    <th style="padding:7px 10px;min-width:95px"></th>
   </tr>`;
 }
 
@@ -557,7 +596,7 @@ function renderInventory() {
   document.getElementById('inv-count').textContent = `（${filtered.length}件）`;
   const tbody = document.getElementById('inventory-body');
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
     return;
   }
   let html = '';
@@ -653,27 +692,41 @@ function switchView(view, btn) {
 function openAddItem() {
   editingId = null;
   document.getElementById('modal-item-title').textContent = '品目を追加';
-  ['f-name','f-maker','f-min','f-stock'].forEach(id=>document.getElementById(id).value='');
+  ['f-code','f-name','f-maker','f-min','f-stock','f-size','f-hole','f-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('modal-item').classList.add('active');
 }
 function openEditItem(id) {
   const item = items.find(i=>i.id===id); if(!item) return;
   editingId = id;
   document.getElementById('modal-item-title').textContent = '品目を編集';
+  document.getElementById('f-code').value = item.code||'';
   document.getElementById('f-name').value = item.name;
   document.getElementById('f-maker').value = item.maker;
   document.getElementById('f-min').value = item.minStock;
   document.getElementById('f-stock').value = item.stock;
+  document.getElementById('f-size').value = item.size||'';
+  document.getElementById('f-hole').value = item.hole||'';
+  document.getElementById('f-note').value = item.itemNote||'';
   document.getElementById('modal-item').classList.add('active');
 }
 function saveItem() {
+  const code = document.getElementById('f-code').value.trim();
   const name = document.getElementById('f-name').value.trim();
   const maker = document.getElementById('f-maker').value.trim();
   const minStock = parseInt(document.getElementById('f-min').value)||0;
   const stock = parseInt(document.getElementById('f-stock').value)||0;
+  const size = document.getElementById('f-size').value.trim();
+  const hole = document.getElementById('f-hole').value.trim();
+  const itemNote = document.getElementById('f-note').value.trim();
   if (!name) { alert('品名を入力してください'); return; }
-  if (editingId) { const item=items.find(i=>i.id===editingId); item.name=name; item.maker=maker; item.minStock=minStock; item.stock=stock; }
-  else { items.push({id:nextId++, name, maker, stock, minStock, ordered:false, arrivalDate:''}); }
+  if (!confirm(editingId ? '内容を更新しますか？' : 'この品目を追加しますか？')) return;
+  if (editingId) {
+    const item=items.find(i=>i.id===editingId);
+    item.code=code; item.name=name; item.maker=maker; item.minStock=minStock; item.stock=stock;
+    item.size=size; item.hole=hole; item.itemNote=itemNote;
+  } else {
+    items.push({id:nextId++, code, name, maker, stock, minStock, ordered:false, arrivalDate:'', size, hole, itemNote});
+  }
   save(); closeModal('modal-item');
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
@@ -696,7 +749,7 @@ function saveArrival(id,val) {
 }
 function openInOut() {
   const sel=document.getElementById('io-item');
-  sel.innerHTML=items.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+  sel.innerHTML=items.map(i=>`<option value="${i.id}">${i.code ? i.code+' '+i.name : i.name}</option>`).join('');
   ['io-qty','io-person','io-note'].forEach(id=>document.getElementById(id).value='');
   document.querySelector('input[name="io-type"][value="入庫"]').checked=true;
   document.getElementById('modal-inout').classList.add('active');
