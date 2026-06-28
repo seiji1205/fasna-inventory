@@ -626,14 +626,22 @@ async function syncFromSheet() {
       gasGet('getEditLogs'),
     ]);
     if (Array.isArray(remoteItems) && remoteItems.length > 0) {
-      items = remoteItems.map(i => ({
+      const mapped = remoteItems.map(i => ({
         ...i,
         id: Number(i.id),
         stock: Number(i.stock)||0,
         minStock: Number(i.minStock)||0,
         arrivalQty: Number(i.arrivalQty)||0,
         ordered: i.ordered === true || i.ordered === 'TRUE' || i.ordered === 'true',
+        inactive: i.inactive === true || i.inactive === 'TRUE' || i.inactive === 'true',
       }));
+      // IDの重複を除去（最初に出現したものを優先）
+      const seen = new Set();
+      items = mapped.filter(i => {
+        if (seen.has(i.id)) return false;
+        seen.add(i.id);
+        return true;
+      });
       nextId = Math.max(...items.map(i=>i.id)) + 1;
     }
     if (Array.isArray(remoteLogs)) logs = remoteLogs.map(l => ({...l, qty: Number(l.qty)||0}));
