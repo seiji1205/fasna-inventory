@@ -801,8 +801,7 @@ function itemRowHTML(item) {
     <td class="num" style="font-size:14px;color:var(--muted)">${item.tensile||'—'}</td>
     <td class="actions">
       <button class="btn btn-sm" onclick="openEditItem(${item.id})" ${item.inactive?'disabled style="opacity:0.4"':''}>編集</button>
-      <button class="btn btn-sm" style="${item.inactive?'background:#F0FDF4;color:#16A34A;border-color:#BBF7D0':'background:#FFF7ED;color:#B45309;border-color:#FED7AA'}" onclick="toggleInactive(${item.id})">${item.inactive?'▶ 再開':'⏸ 停止'}</button>
-      <button class="btn-danger-sm" onclick="deleteItem(${item.id})">削除</button>
+      <button class="btn btn-sm" style="${item.inactive?'background:#F0FDF4;color:#16A34A;border-color:#BBF7D0':'background:#FFF7ED;color:#B45309;border-color:#FED7AA'}" onclick="toggleInactive(${item.id})">${item.inactive?'▶ 使用再開':'⏸ 使用停止'}</button>
     </td>
   </tr>`;
 }
