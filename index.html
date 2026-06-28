@@ -95,6 +95,15 @@
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   td.actions { white-space: nowrap; display: flex; gap: 5px; justify-content: flex-end; align-items: center; }
 
+  /* 品番・品名 固定列 */
+  .col-code { position: sticky; left: 0; z-index: 2; background: inherit; min-width: 90px; box-shadow: 2px 0 4px rgba(0,0,0,0.06); }
+  .col-name { position: sticky; left: 90px; z-index: 2; background: inherit; min-width: 140px; box-shadow: 2px 0 6px rgba(0,0,0,0.08); }
+  thead .col-code, thead .col-name { z-index: 3; background: var(--bg); }
+  tbody tr:nth-child(even) .col-code,
+  tbody tr:nth-child(even) .col-name { background: #D6E4F5; }
+  tbody tr:hover .col-code,
+  tbody tr:hover .col-name { background: #BDCFE8; }
+
   /* ===== BADGES ===== */
   .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
   .badge-danger { background: var(--danger-light); color: var(--danger); }
@@ -235,7 +244,7 @@
               <tr>
                 <th style="min-width:180px">品名</th>
                 <th style="min-width:90px">メーカー</th>
-                <th class="num" style="min-width:100px">在庫数</th>
+                <th class="num" style="min-width:100px">在庫数（個）</th>
                 <th class="num" style="min-width:70px">最低在庫数</th>
                 <th style="min-width:95px">最終入出庫日</th>
                 <th style="min-width:90px">発注状況</th>
@@ -267,7 +276,7 @@
               <tr>
                 <th style="min-width:220px">品名</th>
                 <th style="min-width:110px">メーカー</th>
-                <th class="num" style="min-width:110px">在庫数</th>
+                <th class="num" style="min-width:110px">在庫数（個）</th>
                 <th class="num" style="min-width:90px">最低在庫数</th>
                 <th style="min-width:110px">発注状況</th>
                 <th style="min-width:140px">入荷予定日</th>
@@ -533,8 +542,8 @@ function itemRowHTML(item) {
   const lastTypeStr = ll ? `<span style="font-size:11px;color:var(--muted);margin-left:4px">${ll.type}</span>` : '';
   const st = status(item);
   return `<tr>
-    <td style="font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap">${item.code||'—'}</td>
-    <td style="font-weight:500">${item.name}</td>
+    <td class="col-code" style="font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap">${item.code||'—'}</td>
+    <td class="col-name" style="font-weight:500">${item.name}</td>
     <td style="font-size:12px;color:var(--muted)">${item.size||'—'}</td>
     <td class="num">
       <div class="stock-cell">
@@ -544,10 +553,10 @@ function itemRowHTML(item) {
     </td>
     <td class="num" style="color:var(--muted)">${item.minStock.toLocaleString()}</td>
     <td style="font-size:12px;color:var(--muted)">${lastDate}${lastTypeStr}</td>
-    <td style="font-size:12px;color:var(--muted)">${item.itemNote||''}</td>
     <td>${orderToggleHTML(item)}</td>
     <td>${arrivalHTML(item)}</td>
     <td>${statusBadge(item)}</td>
+    <td style="font-size:12px;color:var(--muted)">${item.itemNote||''}</td>
     <td style="color:var(--muted);font-size:12px">${item.maker}</td>
     <td style="font-size:12px;color:var(--muted)">${item.hole||'—'}</td>
     <td class="actions">
@@ -564,7 +573,7 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
   const c = CAT_COLORS[key] || CAT_COLORS.other;
   const icon = CAT_ICONS[key] || CAT_ICONS.other;
   return `<tr class="cat-header-row">
-    <td colspan="12" style="padding:16px 16px 10px;background:var(--bg);border-bottom:none;">
+    <td colspan="13" style="padding:16px 16px 10px;background:var(--bg);border-bottom:none;position:sticky;left:0;"">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:80px;height:80px;border-radius:12px;background:${c.bg};color:${c.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
         <span style="font-size:20px;font-weight:700;color:var(--text)">${label}</span>
@@ -574,16 +583,16 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
     </td>
   </tr>
   <tr style="background:var(--bg);border-bottom:2px solid var(--border);">
-    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">品番</th>
-    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:140px">品名</th>
+    <th class="col-code" style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">品番</th>
+    <th class="col-name" style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:140px">品名</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:75px">サイズ(mm)</th>
-    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:right;min-width:100px">在庫数</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:right;min-width:100px">在庫数（個）</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:right;min-width:70px">最低在庫数</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:95px">最終入出庫日</th>
-    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:110px">備考</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">発注状況</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:115px">入荷予定日</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:65px">状態</th>
+    <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:110px">備考</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:90px">メーカー</th>
     <th style="padding:7px 10px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;min-width:100px">板金側下穴径</th>
     <th style="padding:7px 10px;min-width:95px"></th>
@@ -739,6 +748,10 @@ function deleteItem(id) {
 }
 function toggleOrder(id) {
   const item=items.find(i=>i.id===id); if(!item) return;
+  const msg = item.ordered
+    ? `「${item.code||item.name}」を未発注に戻しますか？\n（入荷予定日もクリアされます）`
+    : `「${item.code||item.name}」を発注済みにしますか？`;
+  if (!confirm(msg)) return;
   item.ordered=!item.ordered; if(!item.ordered) item.arrivalDate='';
   save();
   if (currentView==='inventory') renderInventory();
