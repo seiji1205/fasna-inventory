@@ -179,6 +179,11 @@
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
     <span>入出庫を入力</span>
   </button>
+  <span id="sync-status" style="font-size:13px;color:var(--muted);white-space:nowrap">☁️ 未同期</span>
+  <button class="header-btn" onclick="syncFromSheet()" title="スプレッドシートと同期">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <span>同期</span>
+  </button>
   <button class="header-btn" onclick="openAddItem()">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
     <span>品目追加</span>
@@ -201,6 +206,14 @@
     <button class="nav-item" onclick="switchView('log', this)">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span>入出庫履歴</span>
+    </button>
+    <button class="nav-item" onclick="switchView('stocktake', this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>棚卸し</span>
+    </button>
+    <button class="nav-item" onclick="switchView('editlog', this)">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span>変更履歴</span>
     </button>
   </aside>
 
@@ -293,6 +306,10 @@
     <div id="view-log" style="display:none">
       <div class="section-header">
         <div><span class="section-title">入出庫履歴</span><span class="section-count" id="log-count"></span></div>
+        <button class="btn" onclick="exportLogCSV()" style="margin-right:8px">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          CSVエクスポート
+        </button>
         <div style="display:flex;gap:10px;">
           <select class="filter-select" id="log-filter-item" onchange="renderLog()"><option value="">品目：全て</option></select>
           <select class="filter-select" id="log-filter-type" onchange="renderLog()">
@@ -309,14 +326,84 @@
             <thead>
               <tr>
                 <th style="min-width:150px">日時</th>
-                <th style="min-width:220px">品名</th>
+                <th style="min-width:100px">品番</th>
+                <th style="min-width:180px">品名</th>
                 <th style="min-width:70px">種別</th>
-                <th class="num" style="min-width:80px">数量</th>
+                <th class="num" style="min-width:80px">数量（個）</th>
                 <th style="min-width:100px">担当者</th>
                 <th style="min-width:140px">備考</th>
               </tr>
             </thead>
             <tbody id="log-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- 変更履歴 -->
+    <div id="view-editlog" style="display:none">
+      <div class="section-header">
+        <div><span class="section-title">変更履歴</span><span class="section-count" id="editlog-count"></span></div>
+        <div style="display:flex;gap:10px;">
+          <select class="filter-select" id="editlog-filter-type" onchange="renderEditLog()">
+            <option value="">種別：全て</option>
+            <option value="品目追加">品目追加</option>
+            <option value="品目編集">品目編集</option>
+            <option value="品目削除">品目削除</option>
+          </select>
+          <button class="btn" onclick="exportEditLogCSV()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSVエクスポート
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:150px">日時</th>
+                <th style="min-width:80px">種別</th>
+                <th style="min-width:100px">品番</th>
+                <th style="min-width:160px">品名</th>
+                <th style="min-width:300px">変更内容</th>
+                <th style="min-width:100px">操作者</th>
+              </tr>
+            </thead>
+            <tbody id="editlog-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 棚卸し -->
+    <div id="view-stocktake" style="display:none">
+      <div class="section-header">
+        <div><span class="section-title">棚卸し</span><span class="section-count">実在庫数を入力して更新してください</span></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn" onclick="exportCSV()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSVエクスポート
+          </button>
+          <button class="btn primary" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="applyStocktake()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            在庫数を一括更新
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:100px">品番</th>
+                <th style="min-width:160px">品名</th>
+                <th style="min-width:80px">サイズ(mm)</th>
+                <th class="num" style="min-width:110px">現在の在庫数</th>
+                <th style="min-width:130px">実在庫数（入力）</th>
+                <th class="num" style="min-width:90px">差異</th>
+              </tr>
+            </thead>
+            <tbody id="stocktake-body"></tbody>
           </table>
         </div>
       </div>
@@ -376,6 +463,10 @@
       <label>備考</label>
       <input type="text" id="f-note" placeholder="例：適用板厚 1.0〜3.2mm">
     </div>
+    <div class="field">
+      <label>操作者名</label>
+      <input type="text" id="f-operator" placeholder="氏名">
+    </div>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeModal('modal-item')">キャンセル</button>
       <button class="modal-btn primary" onclick="saveItem()">保存する</button>
@@ -388,8 +479,12 @@
   <div class="modal">
     <h2>入出庫を入力</h2>
     <div class="field">
-      <label>品名</label>
-      <select id="io-item" style="width:100%"></select>
+      <label>品番・品名で検索</label>
+      <input type="text" id="io-search" placeholder="品番や品名を入力して絞り込み..." oninput="filterIOItems()">
+    </div>
+    <div class="field">
+      <label>品目を選択</label>
+      <select id="io-item" style="width:100%;height:42px"></select>
     </div>
     <div class="field">
       <label>種別</label>
@@ -422,6 +517,8 @@
 <script>
 const STORAGE_KEY = 'fasna_inventory_v2';
 const LOG_KEY = 'fasna_log_v2';
+const EDITLOG_KEY = 'fasna_editlog_v1';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJgV8cEPuts0zInWxZe3J8QwRyqi5t_knsIHo9yrjDFaUB2GhCU6vO3Rcbo1qpEircPQ/exec';
 
 const DEFAULT_ITEMS = [
   { id:1,  code:'DFB-M3-8SC',   name:'スペーサー 非貫通', maker:'セルジャパン',  stock:939,  minStock:1000 },
@@ -446,20 +543,110 @@ const DEFAULT_ITEMS = [
   { id:20, code:'PC-M6-3',      name:'ナット',            maker:'スタッドテック', stock:1375, minStock:500  },
 ];
 
-let items = [], logs = [], editingId = null, nextId = 100;
+let items = [], logs = [], editLogs = [], editingId = null, nextId = 100;
+let syncStatus = 'idle'; // idle | syncing | ok | error
 
+// ===== GAS通信 =====
+async function gasGet(action) {
+  const res = await fetch(`${GAS_URL}?action=${action}`);
+  return res.json();
+}
+async function gasPost(action, data) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `action=${action}&data=${encodeURIComponent(JSON.stringify(data))}`
+  });
+  return res.json();
+}
+
+function setSyncStatus(s, msg='') {
+  syncStatus = s;
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const icons = { syncing:'⏳', ok:'✅', error:'⚠️', idle:'☁️' };
+  const colors = { syncing:'var(--muted)', ok:'var(--success)', error:'var(--danger)', idle:'var(--muted)' };
+  el.textContent = `${icons[s]} ${msg || {syncing:'同期中...', ok:'同期済み', error:'同期エラー', idle:'未同期'}[s]}`;
+  el.style.color = colors[s];
+}
+
+// ===== ローカル保存（バックアップ） =====
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+    localStorage.setItem(EDITLOG_KEY, JSON.stringify(editLogs));
+  } catch(e) {}
+}
+
+// ===== スプレッドシートへ保存 =====
+async function save() {
+  saveLocal();
+  setSyncStatus('syncing');
+  try {
+    await gasPost('saveItems', items);
+    setSyncStatus('ok');
+  } catch(e) {
+    setSyncStatus('error', 'スプレッドシート保存失敗（ローカルに保存済み）');
+  }
+}
+
+// ログ追記（入出庫）
+async function appendLog(log) {
+  logs.push(log);
+  saveLocal();
+  try { await gasPost('addLog', log); } catch(e) {}
+}
+
+// 変更履歴追記
+async function appendEditLog(log) {
+  editLogs.push(log);
+  saveLocal();
+  try { await gasPost('addEditLog', log); } catch(e) {}
+}
+
+// ===== スプレッドシートから読み込み =====
+async function syncFromSheet() {
+  setSyncStatus('syncing', 'スプレッドシートから読込中...');
+  try {
+    const [remoteItems, remoteLogs, remoteEditLogs] = await Promise.all([
+      gasGet('getItems'),
+      gasGet('getLogs'),
+      gasGet('getEditLogs'),
+    ]);
+    if (Array.isArray(remoteItems) && remoteItems.length > 0) {
+      items = remoteItems.map(i => ({
+        ...i,
+        id: Number(i.id),
+        stock: Number(i.stock)||0,
+        minStock: Number(i.minStock)||0,
+        arrivalQty: Number(i.arrivalQty)||0,
+        ordered: i.ordered === true || i.ordered === 'TRUE' || i.ordered === 'true',
+      }));
+      nextId = Math.max(...items.map(i=>i.id)) + 1;
+    }
+    if (Array.isArray(remoteLogs)) logs = remoteLogs.map(l => ({...l, qty: Number(l.qty)||0}));
+    if (Array.isArray(remoteEditLogs)) editLogs = remoteEditLogs;
+    saveLocal();
+    setSyncStatus('ok', `同期完了（${new Date().toLocaleTimeString('ja-JP')}）`);
+    renderInventory();
+    updateStats();
+  } catch(e) {
+    setSyncStatus('error', 'スプレッドシート接続失敗（ローカルデータを使用）');
+  }
+}
+
+// ===== 初回ロード =====
 function load() {
   try {
     const d = localStorage.getItem(STORAGE_KEY);
     items = d ? JSON.parse(d) : JSON.parse(JSON.stringify(DEFAULT_ITEMS));
     const l = localStorage.getItem(LOG_KEY);
     logs = l ? JSON.parse(l) : [];
+    const el = localStorage.getItem(EDITLOG_KEY);
+    editLogs = el ? JSON.parse(el) : [];
     nextId = items.length ? Math.max(...items.map(i => i.id)) + 1 : 100;
-  } catch(e) { items = JSON.parse(JSON.stringify(DEFAULT_ITEMS)); logs = []; }
-}
-
-function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); localStorage.setItem(LOG_KEY, JSON.stringify(logs)); } catch(e) {}
+  } catch(e) { items = JSON.parse(JSON.stringify(DEFAULT_ITEMS)); logs = []; editLogs = []; }
 }
 
 function status(item) {
@@ -692,11 +879,12 @@ function renderLog() {
     return;
   }
   tbody.innerHTML = filtered.map(l=>`<tr>
-    <td style="color:var(--muted);font-size:12px">${l.ts}</td>
-    <td>${l.name}</td>
+    <td style="color:var(--muted);font-size:13px">${l.ts}</td>
+    <td style="font-weight:600;font-size:14px;color:var(--muted)">${l.code||'—'}</td>
+    <td style="font-size:14px">${l.name}</td>
     <td><span class="badge ${l.type==='入庫'?'badge-ok':'badge-warning'}">${l.type}</span></td>
-    <td class="num" style="font-weight:500">${l.qty.toLocaleString()}</td>
-    <td>${l.person}</td>
+    <td class="num" style="font-weight:600;font-size:15px">${l.qty.toLocaleString()}</td>
+    <td style="font-size:14px">${l.person}</td>
     <td style="color:var(--muted);font-size:13px">${l.note||''}</td>
   </tr>`).join('');
   updateLogFilters();
@@ -714,11 +902,13 @@ let currentView = 'inventory';
 function switchView(view, btn) {
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  ['inventory','order','log'].forEach(v => { document.getElementById('view-'+v).style.display = v===view?'':'none'; });
+  ['inventory','order','log','stocktake','editlog'].forEach(v => { document.getElementById('view-'+v).style.display = v===view?'':'none'; });
   currentView = view;
   if (view==='inventory') renderInventory();
   if (view==='order') renderOrder();
   if (view==='log') renderLog();
+  if (view==='stocktake') renderStocktake();
+  if (view==='editlog') renderEditLog();
 }
 
 function openAddItem() {
@@ -754,14 +944,29 @@ function saveItem() {
   const thickness = document.getElementById('f-thickness').value.trim();
   const tensile = document.getElementById('f-tensile').value.trim();
   const itemNote = document.getElementById('f-note').value.trim();
+  const operator = document.getElementById('f-operator').value.trim();
   if (!name) { alert('品名を入力してください'); return; }
   if (!confirm(editingId ? '内容を更新しますか？' : 'この品目を追加しますか？')) return;
   if (editingId) {
-    const item=items.find(i=>i.id===editingId);
-    item.code=code; item.name=name; item.maker=maker; item.minStock=minStock; item.stock=stock;
-    item.size=size; item.hole=hole; item.thickness=thickness; item.tensile=tensile; item.itemNote=itemNote;
+    const old = items.find(i=>i.id===editingId);
+    const changes = [];
+    if (old.code !== code) changes.push(`品番：${old.code||'—'}→${code||'—'}`);
+    if (old.name !== name) changes.push(`品名：${old.name}→${name}`);
+    if (old.maker !== maker) changes.push(`メーカー：${old.maker}→${maker}`);
+    if (old.minStock !== minStock) changes.push(`最低在庫数：${old.minStock}→${minStock}`);
+    if (old.stock !== stock) changes.push(`在庫数：${old.stock}→${stock}`);
+    if ((old.size||'') !== size) changes.push(`サイズ：${old.size||'—'}→${size||'—'}`);
+    if ((old.hole||'') !== hole) changes.push(`下穴径：${old.hole||'—'}→${hole||'—'}`);
+    if ((old.thickness||'') !== thickness) changes.push(`適用板厚：${old.thickness||'—'}→${thickness||'—'}`);
+    if ((old.tensile||'') !== tensile) changes.push(`引張強度：${old.tensile||'—'}→${tensile||'—'}`);
+    if ((old.itemNote||'') !== itemNote) changes.push(`備考：${old.itemNote||'—'}→${itemNote||'—'}`);
+    old.code=code; old.name=name; old.maker=maker; old.minStock=minStock; old.stock=stock;
+    old.size=size; old.hole=hole; old.thickness=thickness; old.tensile=tensile; old.itemNote=itemNote;
+    appendEditLog('品目編集', old, changes.length ? changes.join(' / ') : '変更なし', operator);
   } else {
-    items.push({id:nextId++, code, name, maker, stock, minStock, ordered:false, arrivalDate:'', size, hole, thickness, tensile, itemNote});
+    const newItem = {id:nextId++, code, name, maker, stock, minStock, ordered:false, arrivalDate:'', size, hole, thickness, tensile, itemNote};
+    items.push(newItem);
+    appendEditLog('品目追加', newItem, `品番:${code||'—'} 品名:${name} メーカー:${maker}`, operator);
   }
   save(); closeModal('modal-item');
   if (currentView==='inventory') renderInventory();
@@ -769,7 +974,10 @@ function saveItem() {
 }
 function deleteItem(id) {
   const item=items.find(i=>i.id===id); if(!item) return;
-  if (!confirm(`「${item.name}」を削除してもよいですか？`)) return;
+  const operator = prompt(`「${item.code||item.name}」を削除します。\n操作者名を入力してください：`);
+  if (operator === null) return;
+  if (!confirm(`「${item.code||''}  ${item.name}」を削除してもよいですか？`)) return;
+  appendEditLog('品目削除', item, `品番:${item.code||'—'} 品名:${item.name} メーカー:${item.maker}`, operator);
   items=items.filter(i=>i.id!==id); save(); renderInventory();
 }
 function toggleOrder(id) {
@@ -791,14 +999,20 @@ function saveArrivalQty(id,val) {
   const item=items.find(i=>i.id===id); if(!item) return;
   item.arrivalQty=parseInt(val)||0; save();
 }
+function filterIOItems() {
+  const q = document.getElementById('io-search').value.toLowerCase();
+  const sel = document.getElementById('io-item');
+  const filtered = q ? items.filter(i => (i.code||'').toLowerCase().includes(q) || i.name.toLowerCase().includes(q)) : items;
+  sel.innerHTML = filtered.map(i=>`<option value="${i.id}">${i.code ? i.code+' '+i.name : i.name}</option>`).join('');
+}
 function openInOut() {
-  const sel=document.getElementById('io-item');
-  sel.innerHTML=items.map(i=>`<option value="${i.id}">${i.code ? i.code+' '+i.name : i.name}</option>`).join('');
+  document.getElementById('io-search').value = '';
+  filterIOItems();
   ['io-qty','io-person','io-note'].forEach(id=>document.getElementById(id).value='');
   document.querySelector('input[name="io-type"][value="入庫"]').checked=true;
   document.getElementById('modal-inout').classList.add('active');
 }
-function saveInOut() {
+async function saveInOut() {
   const itemId=parseInt(document.getElementById('io-item').value);
   const type=document.querySelector('input[name="io-type"]:checked').value;
   const qty=parseInt(document.getElementById('io-qty').value);
@@ -807,11 +1021,17 @@ function saveInOut() {
   if (!qty||qty<=0) { alert('数量を入力してください'); return; }
   if (!person) { alert('担当者名を入力してください'); return; }
   const item=items.find(i=>i.id===itemId); if(!item) return;
-  if (type==='出庫'&&item.stock<qty) { if(!confirm(`在庫数(${item.stock.toLocaleString()})より多い数量です。続けますか？`)) return; }
+  if (type==='出庫') {
+    if (item.stock <= 0) {
+      if (!confirm(`⚠️ 在庫切れの警告\n\n「${item.code||item.name}」\n現在の在庫数：${item.stock.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
+    } else if (qty > item.stock) {
+      if (!confirm(`⚠️ 在庫数不足の警告\n\n「${item.code||item.name}」\n現在の在庫数：${item.stock.toLocaleString()}個\n出庫しようとしている数：${qty.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
+    }
+  }
   item.stock+=(type==='入庫'?qty:-qty);
   const now=new Date();
   const ts=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  logs.push({ts, name:item.name, type, qty, person, note});
+  await appendLog({ts, code:item.code||'', name:item.name, type, qty, person, note});
 
   // 入庫かつ発注済みの場合、未発注に戻すか確認
   if (type==='入庫' && item.ordered) {
@@ -826,11 +1046,140 @@ function saveInOut() {
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
 }
+function renderStocktake() {
+  const tbody = document.getElementById('stocktake-body');
+  tbody.innerHTML = items.map(item => {
+    const st = status(item);
+    const color = st==='danger'?'var(--danger)':st==='warning'?'var(--warning)':'var(--text)';
+    return `<tr>
+      <td style="font-weight:600;color:var(--muted);font-size:14px">${item.code||'—'}</td>
+      <td style="font-size:15px">${item.name}</td>
+      <td style="font-size:14px;color:var(--muted)">${item.size||'—'}</td>
+      <td class="num" style="font-weight:700;font-size:18px;color:${color}">${item.stock.toLocaleString()}</td>
+      <td><input type="number" min="0" placeholder="実在庫数を入力" id="st-${item.id}" style="width:140px;height:34px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);padding:0 10px;" oninput="updateDiff(${item.id})"></td>
+      <td class="num" style="font-weight:600;font-size:15px" id="diff-${item.id}">—</td>
+    </tr>`;
+  }).join('');
+}
+function updateDiff(id) {
+  const item = items.find(i=>i.id===id); if(!item) return;
+  const inp = document.getElementById('st-'+id);
+  const val = parseInt(inp.value);
+  const diffEl = document.getElementById('diff-'+id);
+  if (isNaN(val)) { diffEl.textContent='—'; diffEl.style.color='var(--muted)'; return; }
+  const diff = val - item.stock;
+  diffEl.textContent = (diff>0?'+':'')+diff.toLocaleString();
+  diffEl.style.color = diff===0?'var(--success)':diff>0?'var(--accent)':'var(--danger)';
+}
+function applyStocktake() {
+  const updates = items.filter(item => {
+    const inp = document.getElementById('st-'+item.id);
+    return inp && inp.value !== '' && !isNaN(parseInt(inp.value));
+  });
+  if (!updates.length) { alert('実在庫数が入力されていません。'); return; }
+  const lines = updates.map(item => {
+    const newVal = parseInt(document.getElementById('st-'+item.id).value);
+    const diff = newVal - item.stock;
+    return `${item.code||'—'} ${item.name}：${item.stock}→${newVal}（${diff>=0?'+':''}${diff}）`;
+  }).join('\n');
+  if (!confirm(`以下の品目の在庫数を更新しますか？\n\n${lines}`)) return;
+  const now = new Date();
+  const ts = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  updates.forEach(item => {
+    const newVal = parseInt(document.getElementById('st-'+item.id).value);
+    const diff = newVal - item.stock;
+    logs.push({ts, code:item.code||'', name:item.name, type:'棚卸し', qty:diff, person:'棚卸し', note:`棚卸し調整 ${item.stock}→${newVal}`});
+    item.stock = newVal;
+  });
+  save();
+  alert('在庫数を更新しました。');
+  renderStocktake();
+}
+
+// ===== ⑦ CSVエクスポート =====
+function exportCSV() {
+  const headers = ['品番','品名','サイズ(mm)','メーカー','在庫数（個）','最低在庫数','適用板厚(mm)','引張強度(N)','板金側下穴径(mm)','発注状況','入荷予定日','入荷予定数（個）','備考'];
+  const rows = items.map(item => [
+    item.code||'', item.name, item.size||'', item.maker, item.stock, item.minStock,
+    item.thickness||'', item.tensile||'', item.hole||'',
+    item.ordered?'発注済み':'未発注', item.arrivalDate||'', item.arrivalQty||'', item.itemNote||''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `カシメ用ファスナ在庫_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function nowTS() {
+  const now = new Date();
+  return `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+function appendEditLog(type, item, detail, operator='') {
+  const log = { ts: nowTS(), type, code: item.code||'', name: item.name, detail, operator };
+  editLogs.push(log);
+  saveLocal();
+  fetch(GAS_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`action=addEditLog&data=${encodeURIComponent(JSON.stringify(log))}`
+  }).catch(()=>{});
+}
+
+function renderEditLog() {
+  const tf = document.getElementById('editlog-filter-type').value;
+  const filtered = [...editLogs].reverse().filter(l => !tf || l.type === tf);
+  document.getElementById('editlog-count').textContent = `（${filtered.length}件）`;
+  const tbody = document.getElementById('editlog-body');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">変更履歴がありません</td></tr>`;
+    return;
+  }
+  const typeColor = { '品目追加':'badge-ok', '品目編集':'badge-warning', '品目削除':'badge-danger' };
+  tbody.innerHTML = filtered.map(l => `<tr>
+    <td style="font-size:13px;color:var(--muted)">${l.ts}</td>
+    <td><span class="badge ${typeColor[l.type]||'badge-ok'}">${l.type}</span></td>
+    <td style="font-weight:600;font-size:14px;color:var(--muted)">${l.code||'—'}</td>
+    <td style="font-size:14px">${l.name}</td>
+    <td style="font-size:13px;color:var(--muted)">${l.detail}</td>
+    <td style="font-size:14px">${l.operator||'—'}</td>
+  </tr>`).join('');
+}
+
+function exportEditLogCSV() {
+  const headers = ['日時','種別','品番','品名','変更内容','操作者'];
+  const rows = [...editLogs].reverse().map(l => [l.ts, l.type, l.code||'', l.name, l.detail, l.operator||'']);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `変更履歴_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportLogCSV() {
+  const headers = ['日時','品番','品名','種別','数量（個）','担当者','備考'];
+  const rows = [...logs].reverse().map(l => [l.ts, l.code||'', l.name, l.type, l.qty, l.person, l.note||'']);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `入出庫履歴_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 document.querySelectorAll('.overlay').forEach(el=>{ el.addEventListener('click', e=>{ if(e.target===el) el.classList.remove('active'); }); });
 
 load();
 renderInventory();
+syncFromSheet();
 </script>
 </body>
 </html>
