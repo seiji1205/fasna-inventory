@@ -53,46 +53,46 @@
   .nav-badge.warning { background: var(--warning-light); color: var(--warning); }
 
   /* ===== MAIN ===== */
-  main { flex: 1; overflow-y: auto; padding: 28px 32px; display: flex; flex-direction: column; gap: 0; }
+  main { flex: 1; overflow-y: auto; padding: 20px 20px; display: flex; flex-direction: column; gap: 0; }
 
   /* ===== STATS ===== */
-  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 240px)); gap: 16px; margin-bottom: 28px; }
-  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; }
-  .stat-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
-  .stat-value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 200px)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .stat-label { font-size: 11px; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
   .stat-value.danger { color: var(--danger); }
   .stat-value.warning { color: var(--warning); }
-  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
 
   /* ===== TOOLBAR ===== */
-  .toolbar { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
-  .search-wrap { position: relative; flex: 1; max-width: 360px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .search-wrap { position: relative; flex: 1; max-width: 260px; }
   .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 16px; height: 16px; pointer-events: none; }
-  input[type="text"], input[type="number"], input[type="date"], select { height: 38px; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px; font-size: 14px; color: var(--text); background: var(--surface); outline: none; width: 100%; font-family: inherit; }
+  input[type="text"], input[type="number"], input[type="date"], select { height: 34px; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 10px; font-size: 13px; color: var(--text); background: var(--surface); outline: none; width: 100%; font-family: inherit; }
   input[type="date"] { cursor: pointer; }
-  .search-wrap input { padding-left: 38px; }
+  .search-wrap input { padding-left: 34px; }
   input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(27,79,216,0.1); }
-  .filter-select { width: auto; min-width: 130px; height: 38px; }
+  .filter-select { width: auto; min-width: 110px; height: 34px; font-size: 12px; }
 
   /* ===== BUTTONS ===== */
-  .btn { height: 34px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background 0.12s; font-family: inherit; }
+  .btn { height: 30px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; transition: background 0.12s; font-family: inherit; }
   .btn:hover { background: var(--bg); }
-  .btn-sm { height: 32px; padding: 0 12px; font-size: 12px; }
-  .btn-danger-sm { height: 32px; padding: 0 12px; font-size: 12px; background: var(--danger-light); color: var(--danger); border: 1px solid #FEE4E2; border-radius: var(--radius); cursor: pointer; font-family: inherit; transition: background 0.12s; }
+  .btn-sm { height: 28px; padding: 0 10px; font-size: 11px; }
+  .btn-danger-sm { height: 28px; padding: 0 10px; font-size: 11px; background: var(--danger-light); color: var(--danger); border: 1px solid #FEE4E2; border-radius: var(--radius); cursor: pointer; font-family: inherit; transition: background 0.12s; }
   .btn-danger-sm:hover { background: #FEE4E2; }
 
   /* ===== TABLE ===== */
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
   .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 900px; }
-  thead th { background: var(--bg); padding: 11px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; letter-spacing: 0.02em; }
+  table { width: 100%; border-collapse: collapse; min-width: 780px; }
+  thead th { background: var(--bg); padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; letter-spacing: 0.02em; }
   thead th.num { text-align: right; }
   tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
   tbody tr:last-child { border-bottom: none; }
   tbody tr:hover { background: #FAFBFC; }
-  td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
+  td { padding: 8px 10px; font-size: 12px; vertical-align: middle; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td.actions { white-space: nowrap; display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+  td.actions { white-space: nowrap; display: flex; gap: 5px; justify-content: flex-end; align-items: center; }
 
   /* ===== BADGES ===== */
   .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
@@ -101,17 +101,17 @@
   .badge-ok { background: var(--success-light); color: var(--success); }
 
   /* ===== STOCK BAR ===== */
-  .stock-cell { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-  .stock-bar { width: 72px; height: 5px; background: var(--border); border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+  .stock-cell { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .stock-bar { width: 50px; height: 5px; background: var(--border); border-radius: 999px; overflow: hidden; flex-shrink: 0; }
   .stock-bar-fill { height: 100%; border-radius: 999px; }
 
   /* ===== ORDER TOGGLE ===== */
-  .order-toggle { height: 30px; padding: 0 12px; font-size: 12px; font-weight: 500; border-radius: var(--radius); border: 1px solid; cursor: pointer; font-family: inherit; transition: all 0.12s; white-space: nowrap; }
+  .order-toggle { height: 26px; padding: 0 8px; font-size: 11px; font-weight: 500; border-radius: var(--radius); border: 1px solid; cursor: pointer; font-family: inherit; transition: all 0.12s; white-space: nowrap; }
   .order-toggle.unordered { background: var(--bg); color: var(--muted); border-color: var(--border); }
   .order-toggle.unordered:hover { background: #E8EBF0; color: var(--text); }
   .order-toggle.ordered { background: var(--accent-light); color: var(--accent); border-color: #C7D9FF; }
   .order-toggle.ordered:hover { background: #DDEAFF; }
-  .arrival-input { height: 30px; font-size: 12px; padding: 0 8px; width: 130px; min-width: 0; }
+  .arrival-input { height: 26px; font-size: 11px; padding: 0 6px; width: 112px; min-width: 0; }
   .arrival-input:disabled { opacity: 0.38; cursor: not-allowed; }
 
   /* ===== MODAL ===== */
@@ -167,7 +167,7 @@
   </div>
   <button class="header-btn primary" onclick="openInOut()">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
-    <span>入出庫を記録</span>
+    <span>入出庫を入力</span>
   </button>
   <button class="header-btn" onclick="openAddItem()">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
@@ -232,15 +232,15 @@
           <table>
             <thead>
               <tr>
-                <th style="min-width:220px">品名</th>
-                <th style="min-width:110px">メーカー</th>
-                <th class="num" style="min-width:120px">在庫数</th>
-                <th class="num" style="min-width:90px">最低在庫数</th>
-                <th style="min-width:120px">最終入出庫日</th>
-                <th style="min-width:110px">発注状況</th>
-                <th style="min-width:140px">入荷予定日</th>
-                <th style="min-width:80px">状態</th>
-                <th style="min-width:120px"></th>
+                <th style="min-width:180px">品名</th>
+                <th style="min-width:90px">メーカー</th>
+                <th class="num" style="min-width:100px">在庫数</th>
+                <th class="num" style="min-width:70px">最低在庫数</th>
+                <th style="min-width:95px">最終入出庫日</th>
+                <th style="min-width:90px">発注状況</th>
+                <th style="min-width:115px">入荷予定日</th>
+                <th style="min-width:65px">状態</th>
+                <th style="min-width:95px"></th>
               </tr>
             </thead>
             <tbody id="inventory-body"></tbody>
@@ -346,7 +346,7 @@
 <!-- 入出庫モーダル -->
 <div class="overlay" id="modal-inout">
   <div class="modal">
-    <h2>入出庫を記録</h2>
+    <h2>入出庫を入力</h2>
     <div class="field">
       <label>品名</label>
       <select id="io-item" style="width:100%"></select>
