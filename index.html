@@ -56,13 +56,13 @@
   main { flex: 1; overflow-y: auto; padding: 22px 22px; display: flex; flex-direction: column; gap: 0; }
 
   /* ===== STATS ===== */
-  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 200px)); gap: 12px; margin-bottom: 22px; }
-  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; }
-  .stat-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
-  .stat-value { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 160px)); gap: 10px; margin-bottom: 18px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
+  .stat-label { font-size: 11px; font-weight: 500; color: var(--muted); margin-bottom: 3px; }
+  .stat-value { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; }
   .stat-value.danger { color: var(--danger); }
   .stat-value.warning { color: var(--warning); }
-  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
 
   /* ===== TOOLBAR ===== */
   .toolbar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
@@ -237,6 +237,11 @@
             <option value="warning">要注意</option>
             <option value="ok">正常</option>
           </select>
+          <select class="filter-select" id="filter-active" onchange="renderInventory()">
+            <option value="active">使用中のみ</option>
+            <option value="">全て表示</option>
+            <option value="inactive">使用停止のみ</option>
+          </select>
           <select class="filter-select" id="filter-cat" onchange="renderInventory()">
             <option value="">カテゴリー：全て</option>
             <option value="thru">スペーサー 貫通</option>
@@ -288,12 +293,14 @@
             <thead>
               <tr>
                 <th style="min-width:220px">品名</th>
-                <th style="min-width:110px">メーカー</th>
-                <th class="num" style="min-width:110px">在庫数（個）</th>
-                <th class="num" style="min-width:90px">最低在庫数</th>
-                <th style="min-width:110px">発注状況</th>
-                <th style="min-width:140px">入荷予定日</th>
+                <th style="min-width:90px">品番</th>
+                <th style="min-width:150px">品名</th>
+                <th class="num" style="min-width:100px">在庫数（個）</th>
+                <th class="num" style="min-width:80px">最低在庫数</th>
                 <th style="min-width:80px">状態</th>
+                <th style="min-width:110px">発注状況</th>
+                <th style="min-width:130px">入荷予定日</th>
+                <th class="num" style="min-width:110px">入荷予定数（個）</th>
               </tr>
             </thead>
             <tbody id="order-body"></tbody>
@@ -325,12 +332,13 @@
           <table>
             <thead>
               <tr>
-                <th style="min-width:150px">日時</th>
-                <th style="min-width:100px">品番</th>
-                <th style="min-width:180px">品名</th>
-                <th style="min-width:70px">種別</th>
+                <th style="min-width:140px">日時</th>
+                <th style="min-width:90px">品番</th>
+                <th style="min-width:160px">品名</th>
+                <th style="min-width:75px">サイズ(mm)</th>
+                <th style="min-width:65px">種別</th>
                 <th class="num" style="min-width:80px">数量（個）</th>
-                <th style="min-width:100px">担当者</th>
+                <th style="min-width:90px">担当者</th>
                 <th style="min-width:140px">備考</th>
               </tr>
             </thead>
@@ -349,6 +357,8 @@
             <option value="品目追加">品目追加</option>
             <option value="品目編集">品目編集</option>
             <option value="品目削除">品目削除</option>
+            <option value="使用停止">使用停止</option>
+            <option value="使用再開">使用再開</option>
           </select>
           <button class="btn" onclick="exportEditLogCSV()">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -398,8 +408,9 @@
                 <th style="min-width:100px">品番</th>
                 <th style="min-width:160px">品名</th>
                 <th style="min-width:80px">サイズ(mm)</th>
-                <th class="num" style="min-width:110px">現在の在庫数</th>
-                <th style="min-width:130px">実在庫数（入力）</th>
+                <th style="min-width:100px">メーカー</th>
+                <th class="num" style="min-width:110px">現在庫数（個）</th>
+                <th style="min-width:140px">実在庫数（入力）</th>
                 <th class="num" style="min-width:90px">差異</th>
               </tr>
             </thead>
@@ -686,9 +697,10 @@ function arrivalQtyHTML(item) {
 }
 
 function updateStats() {
-  const nd = items.filter(i => status(i)==='danger').length;
-  const nw = items.filter(i => status(i)==='warning').length;
-  const no = items.filter(i => i.ordered).length;
+  const active = items.filter(i => !i.inactive);
+  const nd = active.filter(i => status(i)==='danger').length;
+  const nw = active.filter(i => status(i)==='warning').length;
+  const no = active.filter(i => i.ordered).length;
   document.getElementById('stat-danger').textContent = nd;
   document.getElementById('stat-warning').textContent = nw;
   document.getElementById('nav-danger').textContent = nd;
@@ -700,11 +712,14 @@ function getFiltered() {
   const sf = document.getElementById('filter-status').value;
   const mf = document.getElementById('filter-maker').value;
   const cf = document.getElementById('filter-cat').value;
+  const af = document.getElementById('filter-active').value;
   return items.filter(item => {
     if (q && !item.name.toLowerCase().includes(q) && !(item.code||'').toLowerCase().includes(q) && !item.maker.toLowerCase().includes(q)) return false;
     if (sf && status(item) !== sf) return false;
     if (mf && item.maker !== mf) return false;
     if (cf && getCategory(item) !== cf) return false;
+    if (af === 'active' && item.inactive) return false;
+    if (af === 'inactive' && !item.inactive) return false;
     return true;
   });
 }
@@ -743,14 +758,16 @@ function itemRowHTML(item) {
   const lastDate = ll ? ll.ts.slice(0,10) : '—';
   const lastTypeStr = ll ? `<span style="font-size:11px;color:var(--muted);margin-left:4px">${ll.type}</span>` : '';
   const st = status(item);
-  return `<tr>
+  const rowStyle = item.inactive ? 'opacity:0.45;' : '';
+  const inactiveLabel = item.inactive ? '<span style="font-size:10px;font-weight:700;background:#E2E8F0;color:#64748B;padding:1px 6px;border-radius:999px;margin-left:6px">使用停止</span>' : '';
+  return `<tr style="${rowStyle}">
     <td class="col-code" style="font-weight:600;color:var(--muted);font-size:15px;white-space:nowrap">${item.code||'—'}</td>
-    <td class="col-name" style="font-weight:500">${item.name}</td>
+    <td class="col-name" style="font-weight:500">${item.name}${inactiveLabel}</td>
     <td style="font-size:15px;color:var(--muted)">${item.size||'—'}</td>
     <td>${statusBadge(item)}</td>
     <td class="num">
       <div class="stock-cell">
-        <span style="font-weight:700;font-size:22px">${item.stock.toLocaleString()}</span>
+        <span style="font-weight:700;font-size:16px">${item.stock.toLocaleString()}</span>
         <div class="stock-bar"><div class="stock-bar-fill" style="width:${barWidth(item)}%;background:${barColor(st)}"></div></div>
       </div>
     </td>
@@ -765,7 +782,8 @@ function itemRowHTML(item) {
     <td style="font-size:14px;color:var(--muted)">${item.thickness||'—'}</td>
     <td class="num" style="font-size:14px;color:var(--muted)">${item.tensile||'—'}</td>
     <td class="actions">
-      <button class="btn btn-sm" onclick="openEditItem(${item.id})">編集</button>
+      <button class="btn btn-sm" onclick="openEditItem(${item.id})" ${item.inactive?'disabled style="opacity:0.4"':''}>編集</button>
+      <button class="btn btn-sm" style="${item.inactive?'background:#F0FDF4;color:#16A34A;border-color:#BBF7D0':'background:#FFF7ED;color:#B45309;border-color:#FED7AA'}" onclick="toggleInactive(${item.id})">${item.inactive?'▶ 再開':'⏸ 停止'}</button>
       <button class="btn-danger-sm" onclick="deleteItem(${item.id})">削除</button>
     </td>
   </tr>`;
@@ -817,12 +835,18 @@ function renderInventory() {
     tbody.innerHTML = `<tr><td colspan="16" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
     return;
   }
+  const grouped = {};
+  CATEGORIES.forEach(cat => grouped[cat.key] = []);
+  filtered.forEach(item => {
+    const key = getCategory(item);
+    grouped[key].push(item);
+  });
   let html = '';
   for (const cat of CATEGORIES) {
-    const group = filtered.filter(item => getCategory(item) === cat.key);
+    const group = grouped[cat.key];
     if (!group.length) continue;
-    const dc = group.filter(i => status(i)==='danger').length;
-    const wc = group.filter(i => status(i)==='warning').length;
+    const dc = group.filter(i => !i.inactive && status(i)==='danger').length;
+    const wc = group.filter(i => !i.inactive && status(i)==='warning').length;
     html += categoryHeaderHTML(cat.key, cat.label, group.length, dc, wc);
     html += group.map(itemRowHTML).join('');
   }
@@ -838,7 +862,7 @@ function updateMakerFilter() {
 
 function renderOrder() {
   const f = document.getElementById('order-filter').value;
-  let list = items.filter(i => status(i)==='danger' || status(i)==='warning' || i.ordered);
+  let list = items.filter(i => !i.inactive && (status(i)==='danger' || status(i)==='warning' || i.ordered));
   if (f==='unordered') list = list.filter(i=>!i.ordered);
   if (f==='ordered') list = list.filter(i=>i.ordered);
   document.getElementById('order-count').textContent = `（${list.length}件）`;
@@ -850,14 +874,14 @@ function renderOrder() {
   tbody.innerHTML = list.map(item => {
     const st = status(item);
     return `<tr>
-      <td style="font-weight:500">${item.name}</td>
-      <td style="color:var(--muted)">${item.maker}</td>
-      <td class="num" style="font-weight:700;font-size:17px">${item.stock.toLocaleString()}</td>
+      <td style="font-weight:600;color:var(--muted);font-size:14px;white-space:nowrap">${item.code||'—'}</td>
+      <td style="font-weight:500;font-size:15px">${item.name}</td>
+      <td class="num" style="font-weight:700;font-size:15px">${item.stock.toLocaleString()}</td>
       <td class="num" style="color:var(--muted)">${item.minStock.toLocaleString()}</td>
+      <td>${statusBadge(item)}</td>
       <td>${orderToggleHTML(item)}</td>
       <td>${arrivalHTML(item)}</td>
-    <td>${arrivalQtyHTML(item)}</td>
-      <td>${statusBadge(item)}</td>
+      <td>${arrivalQtyHTML(item)}</td>
     </tr>`;
   }).join('');
 }
@@ -878,15 +902,19 @@ function renderLog() {
     tbody.innerHTML = `<tr><td colspan="6" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>履歴がありません</td></tr>`;
     return;
   }
-  tbody.innerHTML = filtered.map(l=>`<tr>
-    <td style="color:var(--muted);font-size:13px">${l.ts}</td>
-    <td style="font-weight:600;font-size:14px;color:var(--muted)">${l.code||'—'}</td>
+  tbody.innerHTML = filtered.map(l=>{
+    const itm = items.find(i=>i.code===l.code && i.name===l.name) || items.find(i=>i.name===l.name);
+    const sz = itm ? (itm.size||'—') : '—';
+    return `<tr>
+    <td style="color:var(--muted);font-size:13px;white-space:nowrap">${l.ts}</td>
+    <td style="font-weight:600;font-size:14px;color:var(--muted);white-space:nowrap">${l.code||'—'}</td>
     <td style="font-size:14px">${l.name}</td>
-    <td><span class="badge ${l.type==='入庫'?'badge-ok':'badge-warning'}">${l.type}</span></td>
-    <td class="num" style="font-weight:600;font-size:15px">${l.qty.toLocaleString()}</td>
+    <td style="font-size:13px;color:var(--muted)">${sz}</td>
+    <td><span class="badge ${l.type==='入庫'?'badge-ok':l.type==='棚卸し'?'':'badge-warning'}">${l.type}</span></td>
+    <td class="num" style="font-weight:600;font-size:15px">${Number(l.qty)>=0?'+':''  }${Number(l.qty).toLocaleString()}</td>
     <td style="font-size:14px">${l.person}</td>
     <td style="color:var(--muted);font-size:13px">${l.note||''}</td>
-  </tr>`).join('');
+  </tr>`;}).join('');
   updateLogFilters();
 }
 
@@ -972,6 +1000,19 @@ function saveItem() {
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
 }
+function toggleInactive(id) {
+  const item = items.find(i=>i.id===id); if(!item) return;
+  const msg = item.inactive
+    ? `「${item.code||item.name}」を使用中に戻しますか？`
+    : `「${item.code||item.name}」を使用停止にしますか？
+（在庫一覧・入出庫フォームから除外されます）`;
+  if (!confirm(msg)) return;
+  item.inactive = !item.inactive;
+  appendEditLog(item.inactive ? '使用停止' : '使用再開', item, item.inactive ? '使用停止に変更' : '使用中に変更', '');
+  save();
+  renderInventory();
+}
+
 function deleteItem(id) {
   const item=items.find(i=>i.id===id); if(!item) return;
   const operator = prompt(`「${item.code||item.name}」を削除します。\n操作者名を入力してください：`);
@@ -1002,7 +1043,7 @@ function saveArrivalQty(id,val) {
 function filterIOItems() {
   const q = document.getElementById('io-search').value.toLowerCase();
   const sel = document.getElementById('io-item');
-  const filtered = q ? items.filter(i => (i.code||'').toLowerCase().includes(q) || i.name.toLowerCase().includes(q)) : items;
+  const filtered = (q ? items.filter(i => (i.code||'').toLowerCase().includes(q) || i.name.toLowerCase().includes(q)) : items).filter(i => !i.inactive);
   sel.innerHTML = filtered.map(i=>`<option value="${i.id}">${i.code ? i.code+' '+i.name : i.name}</option>`).join('');
 }
 function openInOut() {
@@ -1048,14 +1089,15 @@ async function saveInOut() {
 }
 function renderStocktake() {
   const tbody = document.getElementById('stocktake-body');
-  tbody.innerHTML = items.map(item => {
+  tbody.innerHTML = items.filter(i=>!i.inactive).map(item => {
     const st = status(item);
     const color = st==='danger'?'var(--danger)':st==='warning'?'var(--warning)':'var(--text)';
     return `<tr>
-      <td style="font-weight:600;color:var(--muted);font-size:14px">${item.code||'—'}</td>
-      <td style="font-size:15px">${item.name}</td>
+      <td style="font-weight:600;color:var(--muted);font-size:14px;white-space:nowrap">${item.code||'—'}</td>
+      <td style="font-size:15px;font-weight:500">${item.name}</td>
       <td style="font-size:14px;color:var(--muted)">${item.size||'—'}</td>
-      <td class="num" style="font-weight:700;font-size:18px;color:${color}">${item.stock.toLocaleString()}</td>
+      <td style="font-size:14px;color:var(--muted)">${item.maker}</td>
+      <td class="num" style="font-weight:700;font-size:15px;color:${color}">${item.stock.toLocaleString()}</td>
       <td><input type="number" min="0" placeholder="実在庫数を入力" id="st-${item.id}" style="width:140px;height:34px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);padding:0 10px;" oninput="updateDiff(${item.id})"></td>
       <td class="num" style="font-weight:600;font-size:15px" id="diff-${item.id}">—</td>
     </tr>`;
@@ -1139,7 +1181,7 @@ function renderEditLog() {
     tbody.innerHTML = `<tr><td colspan="6" class="empty">変更履歴がありません</td></tr>`;
     return;
   }
-  const typeColor = { '品目追加':'badge-ok', '品目編集':'badge-warning', '品目削除':'badge-danger' };
+  const typeColor = { '品目追加':'badge-ok', '品目編集':'badge-warning', '品目削除':'badge-danger', '使用停止':'', '使用再開':'badge-ok' };
   tbody.innerHTML = filtered.map(l => `<tr>
     <td style="font-size:13px;color:var(--muted)">${l.ts}</td>
     <td><span class="badge ${typeColor[l.type]||'badge-ok'}">${l.type}</span></td>
