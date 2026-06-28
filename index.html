@@ -596,8 +596,15 @@ function saveLocal() {
   } catch(e) {}
 }
 
-// ===== スプレッドシートへ保存 =====
-async function save() {
+// ===== 1件追加・更新 =====
+async function upsertItem(item) {
+  try {
+    await gasPost('upsertItem', item);
+  } catch(e) {}
+}
+
+// ===== スプレッドシートへ保存（全件上書き：棚卸し一括・初期同期用）=====
+async function saveAll() {
   saveLocal();
   setSyncStatus('syncing');
   try {
@@ -605,6 +612,20 @@ async function save() {
     setSyncStatus('ok');
   } catch(e) {
     setSyncStatus('error', 'スプレッドシート保存失敗（ローカルに保存済み）');
+  }
+}
+
+// ===== 通常の保存（1件upsert）=====
+async function save(changedItem) {
+  saveLocal();
+  if (changedItem) {
+    setSyncStatus('syncing');
+    try {
+      await upsertItem(changedItem);
+      setSyncStatus('ok');
+    } catch(e) {
+      setSyncStatus('error', 'スプレッドシート保存失敗（ローカルに保存済み）');
+    }
   }
 }
 
@@ -657,7 +678,7 @@ async function syncFromSheet() {
     if (Array.isArray(remoteEditLogs)) editLogs = remoteEditLogs;
     saveLocal();
     // 重複除去後の状態をスプレッドシートに書き戻して正規化
-    try { await gasPost('saveItems', items); } catch(e) {}
+    try { await gasPost('saveItems', items); } catch(e) {}  // saveAll相当
     setSyncStatus('ok', `同期完了（${new Date().toLocaleTimeString('ja-JP')}）`);
     renderInventory();
     updateStats();
@@ -1052,7 +1073,8 @@ function saveItem() {
     items.push(newItem);
     appendEditLog('品目追加', newItem, `品番:${code||'—'} 品名:${name} メーカー:${maker}`, operator);
   }
-  save(); closeModal('modal-item');
+  const changed = editingId ? items.find(i=>i.id===editingId) : items[items.length-1];
+  save(changed); closeModal('modal-item');
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
 }
@@ -1065,7 +1087,7 @@ function toggleInactive(id) {
   if (!confirm(msg)) return;
   item.inactive = !item.inactive;
   appendEditLog(item.inactive ? '使用停止' : '使用再開', item, item.inactive ? '使用停止に変更' : '使用中に変更', '');
-  save();
+  save(item);
   renderInventory();
 }
 
@@ -1090,11 +1112,11 @@ function toggleOrder(id) {
 }
 function saveArrival(id,val) {
   const item=items.find(i=>i.id===id); if(!item) return;
-  item.arrivalDate=val; save();
+  item.arrivalDate=val; save(item);
 }
 function saveArrivalQty(id,val) {
   const item=items.find(i=>i.id===id); if(!item) return;
-  item.arrivalQty=parseInt(val)||0; save();
+  item.arrivalQty=parseInt(val)||0; save(item);
 }
 function filterIOItems() {
   const q = document.getElementById('io-search').value.toLowerCase();
@@ -1139,7 +1161,7 @@ async function saveInOut() {
     }
   }
 
-  save(); closeModal('modal-inout');
+  save(item); closeModal('modal-inout');
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
 }
@@ -1191,7 +1213,7 @@ function applyStocktake() {
     logs.push({ts, code:item.code||'', name:item.name, type:'棚卸し', qty:diff, person:'棚卸し', note:`棚卸し調整 ${item.stock}→${newVal}`});
     item.stock = newVal;
   });
-  save();
+  saveAll();
   alert('在庫数を更新しました。');
   renderStocktake();
 }
