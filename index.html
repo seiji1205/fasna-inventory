@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ファスナ在庫管理</title>
+<title>カシメ用ファスナ在庫管理</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -173,7 +173,7 @@
     <div class="logo-icon">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
     </div>
-    <span>ファスナ在庫管理</span>
+    <span>カシメ用ファスナ在庫管理</span>
   </div>
   <button class="header-btn primary" onclick="openInOut()">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
@@ -358,8 +358,18 @@
         <input type="text" id="f-size" placeholder="例：M3×8">
       </div>
       <div class="field">
-        <label>板金側下穴径 (mm)</label>
+        <label>板金側下穴径(mm)</label>
         <input type="text" id="f-hole" placeholder="例：3.3">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>適用板厚 (mm)</label>
+        <input type="text" id="f-thickness" placeholder="例：1.0〜3.2">
+      </div>
+      <div class="field">
+        <label>引張強度 (N)</label>
+        <input type="number" id="f-tensile" min="0" placeholder="例：3500">
       </div>
     </div>
     <div class="field">
@@ -564,7 +574,9 @@ function itemRowHTML(item) {
     <td>${arrivalQtyHTML(item)}</td>
     <td style="font-size:12px;color:var(--muted)">${item.itemNote||''}</td>
     <td style="color:var(--muted);font-size:12px">${item.maker}</td>
-    <td style="font-size:12px;color:var(--muted)">${item.hole||'—'}</td>
+    <td style="font-size:14px;color:var(--muted)">${item.hole||'—'}</td>
+    <td style="font-size:14px;color:var(--muted)">${item.thickness||'—'}</td>
+    <td class="num" style="font-size:14px;color:var(--muted)">${item.tensile||'—'}</td>
     <td class="actions">
       <button class="btn btn-sm" onclick="openEditItem(${item.id})">編集</button>
       <button class="btn-danger-sm" onclick="deleteItem(${item.id})">削除</button>
@@ -579,7 +591,7 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
   const c = CAT_COLORS[key] || CAT_COLORS.other;
   const icon = CAT_ICONS[key] || CAT_ICONS.other;
   return `<tr class="cat-header-row">
-    <td colspan="14" style="padding:16px 16px 10px;background:var(--bg);border-bottom:none;position:sticky;left:0;"">
+    <td colspan="16" style="padding:16px 16px 10px;background:var(--bg);border-bottom:none;position:sticky;left:0;"">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:110px;height:110px;border-radius:14px;background:${c.bg};color:${c.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
         <span style="font-size:20px;font-weight:700;color:var(--text)">${label}</span>
@@ -601,7 +613,9 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:right;min-width:100px">入荷予定数（個）</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:200px">備考</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:90px">メーカー</th>
-    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:100px">板金側下穴径</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:100px">板金側下穴径(mm)</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:110px">適用板厚(mm)</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:right;min-width:110px">引張強度(N)</th>
     <th style="padding:7px 10px;min-width:95px"></th>
   </tr>`;
 }
@@ -613,7 +627,7 @@ function renderInventory() {
   document.getElementById('inv-count').textContent = `（${filtered.length}件）`;
   const tbody = document.getElementById('inventory-body');
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="14" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
     return;
   }
   let html = '';
@@ -724,6 +738,8 @@ function openEditItem(id) {
   document.getElementById('f-stock').value = item.stock;
   document.getElementById('f-size').value = item.size||'';
   document.getElementById('f-hole').value = item.hole||'';
+  document.getElementById('f-thickness').value = item.thickness||'';
+  document.getElementById('f-tensile').value = item.tensile||'';
   document.getElementById('f-note').value = item.itemNote||'';
   document.getElementById('modal-item').classList.add('active');
 }
@@ -735,15 +751,17 @@ function saveItem() {
   const stock = parseInt(document.getElementById('f-stock').value)||0;
   const size = document.getElementById('f-size').value.trim();
   const hole = document.getElementById('f-hole').value.trim();
+  const thickness = document.getElementById('f-thickness').value.trim();
+  const tensile = document.getElementById('f-tensile').value.trim();
   const itemNote = document.getElementById('f-note').value.trim();
   if (!name) { alert('品名を入力してください'); return; }
   if (!confirm(editingId ? '内容を更新しますか？' : 'この品目を追加しますか？')) return;
   if (editingId) {
     const item=items.find(i=>i.id===editingId);
     item.code=code; item.name=name; item.maker=maker; item.minStock=minStock; item.stock=stock;
-    item.size=size; item.hole=hole; item.itemNote=itemNote;
+    item.size=size; item.hole=hole; item.thickness=thickness; item.tensile=tensile; item.itemNote=itemNote;
   } else {
-    items.push({id:nextId++, code, name, maker, stock, minStock, ordered:false, arrivalDate:'', size, hole, itemNote});
+    items.push({id:nextId++, code, name, maker, stock, minStock, ordered:false, arrivalDate:'', size, hole, thickness, tensile, itemNote});
   }
   save(); closeModal('modal-item');
   if (currentView==='inventory') renderInventory();
