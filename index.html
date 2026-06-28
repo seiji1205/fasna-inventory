@@ -482,6 +482,11 @@ function arrivalHTML(item) {
   const val = item.arrivalDate || '';
   return `<input type="date" class="arrival-input" value="${val}" ${dis} onchange="saveArrival(${item.id},this.value)">`;
 }
+function arrivalQtyHTML(item) {
+  const dis = item.ordered ? '' : 'disabled';
+  const val = item.arrivalQty || '';
+  return `<input type="number" min="0" class="arrival-input" style="width:80px;" value="${val}" placeholder="—" ${dis} onchange="saveArrivalQty(${item.id},this.value)">`;
+}
 
 function updateStats() {
   const nd = items.filter(i => status(i)==='danger').length;
@@ -556,6 +561,7 @@ function itemRowHTML(item) {
     <td style="font-size:12px;color:var(--muted)">${lastDate}${lastTypeStr}</td>
     <td>${orderToggleHTML(item)}</td>
     <td>${arrivalHTML(item)}</td>
+    <td>${arrivalQtyHTML(item)}</td>
     <td style="font-size:12px;color:var(--muted)">${item.itemNote||''}</td>
     <td style="color:var(--muted);font-size:12px">${item.maker}</td>
     <td style="font-size:12px;color:var(--muted)">${item.hole||'—'}</td>
@@ -573,7 +579,7 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
   const c = CAT_COLORS[key] || CAT_COLORS.other;
   const icon = CAT_ICONS[key] || CAT_ICONS.other;
   return `<tr class="cat-header-row">
-    <td colspan="13" style="padding:16px 16px 10px;background:var(--bg);border-bottom:none;position:sticky;left:0;"">
+    <td colspan="14" style="padding:16px 16px 10px;background:var(--bg);border-bottom:none;position:sticky;left:0;"">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:110px;height:110px;border-radius:14px;background:${c.bg};color:${c.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
         <span style="font-size:20px;font-weight:700;color:var(--text)">${label}</span>
@@ -592,7 +598,8 @@ function categoryHeaderHTML(key, label, count, dangerCount, warningCount) {
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:95px">最終入出庫日</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:90px">発注状況</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:115px">入荷予定日</th>
-    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:110px">備考</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:right;min-width:100px">入荷予定数（個）</th>
+    <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:200px">備考</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:90px">メーカー</th>
     <th style="padding:10px 13px;font-size:14px;font-weight:700;color:var(--muted);text-align:left;min-width:100px">板金側下穴径</th>
     <th style="padding:7px 10px;min-width:95px"></th>
@@ -606,7 +613,7 @@ function renderInventory() {
   document.getElementById('inv-count').textContent = `（${filtered.length}件）`;
   const tbody = document.getElementById('inventory-body');
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="empty"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>該当する品目がありません</td></tr>`;
     return;
   }
   let html = '';
@@ -648,6 +655,7 @@ function renderOrder() {
       <td class="num" style="color:var(--muted)">${item.minStock.toLocaleString()}</td>
       <td>${orderToggleHTML(item)}</td>
       <td>${arrivalHTML(item)}</td>
+    <td>${arrivalQtyHTML(item)}</td>
       <td>${statusBadge(item)}</td>
     </tr>`;
   }).join('');
@@ -752,7 +760,7 @@ function toggleOrder(id) {
     ? `「${item.code||item.name}」を未発注に戻しますか？\n（入荷予定日もクリアされます）`
     : `「${item.code||item.name}」を発注済みにしますか？`;
   if (!confirm(msg)) return;
-  item.ordered=!item.ordered; if(!item.ordered) item.arrivalDate='';
+  item.ordered=!item.ordered; if(!item.ordered) { item.arrivalDate=''; item.arrivalQty=0; }
   save();
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
@@ -760,6 +768,10 @@ function toggleOrder(id) {
 function saveArrival(id,val) {
   const item=items.find(i=>i.id===id); if(!item) return;
   item.arrivalDate=val; save();
+}
+function saveArrivalQty(id,val) {
+  const item=items.find(i=>i.id===id); if(!item) return;
+  item.arrivalQty=parseInt(val)||0; save();
 }
 function openInOut() {
   const sel=document.getElementById('io-item');
@@ -782,6 +794,16 @@ function saveInOut() {
   const now=new Date();
   const ts=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   logs.push({ts, name:item.name, type, qty, person, note});
+
+  // 入庫かつ発注済みの場合、未発注に戻すか確認
+  if (type==='入庫' && item.ordered) {
+    if (confirm(`「${item.code||item.name}」\n入庫された為、発注状況を「　発注済み　」➡「　未発注　」に戻しますか？\n（入荷予定日・入荷予定数もクリアされます）`)) {
+      item.ordered = false;
+      item.arrivalDate = '';
+      item.arrivalQty = 0;
+    }
+  }
+
   save(); closeModal('modal-inout');
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
