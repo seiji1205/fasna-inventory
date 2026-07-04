@@ -1097,7 +1097,7 @@ function deleteItem(id) {
   if (operator === null) return;
   if (!confirm(`「${item.code||''}  ${item.name}」を削除してもよいですか？`)) return;
   appendEditLog('品目削除', item, `品番:${item.code||'—'} 品名:${item.name} メーカー:${item.maker}`, operator);
-  items=items.filter(i=>i.id!==id); save(); renderInventory();
+  items=items.filter(i=>i.id!==id); saveAll(); renderInventory();
 }
 function toggleOrder(id) {
   const item=items.find(i=>i.id===id); if(!item) return;
@@ -1106,7 +1106,7 @@ function toggleOrder(id) {
     : `「${item.code||item.name}」を発注済みにしますか？`;
   if (!confirm(msg)) return;
   item.ordered=!item.ordered; if(!item.ordered) { item.arrivalDate=''; item.arrivalQty=0; }
-  save();
+  save(item);
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
 }
@@ -1140,14 +1140,35 @@ async function saveInOut() {
   if (!qty||qty<=0) { alert('数量を入力してください'); return; }
   if (!person) { alert('担当者名を入力してください'); return; }
   const item=items.find(i=>i.id===itemId); if(!item) return;
+
+  // 出庫時の警告（ローカル在庫数を参考値として表示）
   if (type==='出庫') {
     if (item.stock <= 0) {
-      if (!confirm(`⚠️ 在庫切れの警告\n\n「${item.code||item.name}」\n現在の在庫数：${item.stock.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
+      if (!confirm(`⚠️ 在庫切れの警告\n\n「${item.code||item.name}」\n現在の在庫数（参考）：${item.stock.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
     } else if (qty > item.stock) {
-      if (!confirm(`⚠️ 在庫数不足の警告\n\n「${item.code||item.name}」\n現在の在庫数：${item.stock.toLocaleString()}個\n出庫しようとしている数：${qty.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
+      if (!confirm(`⚠️ 在庫数不足の警告\n\n「${item.code||item.name}」\n現在の在庫数（参考）：${item.stock.toLocaleString()}個\n出庫しようとしている数：${qty.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
     }
   }
-  item.stock+=(type==='入庫'?qty:-qty);
+
+  // GAS側で最新値を元に在庫数を計算・更新（競合防止）
+  setSyncStatus('syncing', '在庫数を更新中...');
+  try {
+    const result = await gasPost('recordInOut', { id: item.id, type, qty });
+    if (result.ok) {
+      // GASが返した正確な在庫数をローカルに反映
+      item.stock = result.newStock;
+      setSyncStatus('ok');
+    } else {
+      // GAS失敗時はローカルで計算（フォールバック）
+      item.stock += (type==='入庫' ? qty : -qty);
+      setSyncStatus('error', '在庫数同期失敗（ローカルで更新）');
+    }
+  } catch(e) {
+    // 通信エラー時はローカルで計算（フォールバック）
+    item.stock += (type==='入庫' ? qty : -qty);
+    setSyncStatus('error', '通信エラー（ローカルで更新）');
+  }
+
   const now=new Date();
   const ts=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   await appendLog({ts, code:item.code||'', name:item.name, type, qty, person, note});
@@ -1161,6 +1182,7 @@ async function saveInOut() {
     }
   }
 
+  saveLocal();
   save(item); closeModal('modal-inout');
   if (currentView==='inventory') renderInventory();
   else if (currentView==='order') renderOrder();
