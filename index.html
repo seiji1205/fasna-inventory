@@ -673,7 +673,6 @@ async function appendLog(log) {
   try {
     await gasPost('addLog', log);
   } catch(e) {
-    // 失敗時はキューに追加して後で再送
     pendingQueue.push({ type: 'addLog', data: log });
     savePending();
   }
@@ -708,20 +707,27 @@ async function syncFromSheet() {
       // IDの重複を除去（IDと品番+品名の両方でチェック）
       const seenIds = new Set();
       const seenKeys = new Set();
-      items = mapped.filter(i => {
+      const deduped = mapped.filter(i => {
         const key = `${i.code||''}__${i.name}`;
         if (seenIds.has(i.id) || seenKeys.has(key)) return false;
         seenIds.add(i.id);
         seenKeys.add(key);
         return true;
       });
+      const hadDuplicates = deduped.length < mapped.length;
+      items = deduped;
       nextId = Math.max(...items.map(i=>i.id)) + 1;
+      // 重複があった時のみスプレッドシートに書き戻す
+      if (hadDuplicates) {
+        try {
+          await gasPost('saveItems', items);
+          console.log(`重複${mapped.length - deduped.length}件を除去してスプレッドシートを更新しました`);
+        } catch(e) {}
+      }
     }
     if (Array.isArray(remoteLogs)) logs = remoteLogs.map(l => ({...l, qty: Number(l.qty)||0}));
     if (Array.isArray(remoteEditLogs)) editLogs = remoteEditLogs;
     saveLocal();
-    // 重複除去後の状態をスプレッドシートに書き戻して正規化
-    try { await gasPost('saveItems', items); } catch(e) {}  // saveAll相当
     // ④ 未送信キューを再送
     await retryPendingQueue();
     setSyncStatus('ok', `同期完了（${new Date().toLocaleTimeString('ja-JP')}）`);
@@ -1242,28 +1248,27 @@ async function saveInOut() {
     }
   }
 
-  // GAS側で最新値を元に在庫数を計算・更新（競合防止）
   setSyncStatus('syncing', '在庫数を更新中...');
+  const now=new Date();
+  const ts=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // まずログに記録（都度集計方式：ログが正なので先に書く）
+  await appendLog({ts, id:item.id, code:item.code||'', name:item.name, type, qty, person, note});
+
+  // GAS側でログを集計して最新在庫数を取得
   try {
     const result = await gasPost('recordInOut', { id: item.id, type, qty });
     if (result.ok) {
-      // GASが返した正確な在庫数をローカルに反映
       item.stock = result.newStock;
       setSyncStatus('ok');
     } else {
-      // GAS失敗時はローカルで計算（フォールバック）
       item.stock += (type==='入庫' ? qty : -qty);
-      setSyncStatus('error', '在庫数同期失敗（ローカルで更新）');
+      setSyncStatus('error', '在庫数取得失敗（ローカルで計算）');
     }
   } catch(e) {
-    // 通信エラー時はローカルで計算（フォールバック）
     item.stock += (type==='入庫' ? qty : -qty);
-    setSyncStatus('error', '通信エラー（ローカルで更新）');
+    setSyncStatus('error', '通信エラー（ローカルで計算）');
   }
-
-  const now=new Date();
-  const ts=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  await appendLog({ts, code:item.code||'', name:item.name, type, qty, person, note});
 
   // 入庫かつ発注済みの場合、未発注に戻すか確認
   if (type==='入庫' && item.ordered) {
@@ -1324,7 +1329,7 @@ function applyStocktake() {
   updates.forEach(item => {
     const newVal = parseInt(document.getElementById('st-'+item.id).value);
     const diff = newVal - item.stock;
-    logs.push({ts, code:item.code||'', name:item.name, type:'棚卸し', qty:diff, person:'棚卸し', note:`棚卸し調整 ${item.stock}→${newVal}`});
+    logs.push({ts, id:item.id, code:item.code||'', name:item.name, type:'棚卸し', qty:diff, person:'棚卸し', note:`棚卸し調整 ${item.stock}→${newVal}`});
     item.stock = newVal;
   });
   saveAll();
