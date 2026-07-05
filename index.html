@@ -238,7 +238,7 @@
             <option value="ok">正常</option>
           </select>
           <select class="filter-select" id="filter-active" onchange="renderInventory()">
-            <option value="active">使用中のみ</option>
+            <option value="active">使用中のみ表示</option>
             <option value="">全て表示</option>
             <option value="inactive">使用停止のみ</option>
           </select>
@@ -502,7 +502,8 @@
     </div>
     <div class="field">
       <label>品目を選択</label>
-      <select id="io-item" style="width:100%;height:42px"></select>
+      <select id="io-item" style="width:100%;height:42px" onchange="showCurrentStock(parseInt(this.value))"></select>
+      <div id="io-current-stock" style="margin-top:6px;font-size:13px;color:var(--muted);min-height:20px"></div>
     </div>
     <div class="field">
       <label>種別</label>
@@ -636,11 +637,41 @@ async function save(changedItem) {
   }
 }
 
+// 未送信キュー
+let pendingQueue = JSON.parse(localStorage.getItem('fasna_pending_v1') || '[]');
+function savePending() { try { localStorage.setItem('fasna_pending_v1', JSON.stringify(pendingQueue)); } catch(e) {} }
+
+// ④ キューの再送（起動時・同期時に実行）
+async function retryPendingQueue() {
+  if (!pendingQueue.length) return;
+  const remaining = [];
+  for (const task of pendingQueue) {
+    try {
+      if (task.type === 'addLog') await gasPost('addLog', task.data);
+      else if (task.type === 'addEditLog') await gasPost('addEditLog', task.data);
+      else if (task.type === 'upsertItem') await gasPost('upsertItem', task.data);
+    } catch(e) {
+      remaining.push(task);
+    }
+  }
+  pendingQueue = remaining;
+  savePending();
+  if (remaining.length === 0 && pendingQueue.length === 0) {
+    setSyncStatus('ok', `再送完了（${new Date().toLocaleTimeString('ja-JP')}）`);
+  }
+}
+
 // ログ追記（入出庫）
 async function appendLog(log) {
   logs.push(log);
   saveLocal();
-  try { await gasPost('addLog', log); } catch(e) {}
+  try {
+    await gasPost('addLog', log);
+  } catch(e) {
+    // 失敗時はキューに追加して後で再送
+    pendingQueue.push({ type: 'addLog', data: log });
+    savePending();
+  }
 }
 
 // 変更履歴追記
@@ -686,6 +717,8 @@ async function syncFromSheet() {
     saveLocal();
     // 重複除去後の状態をスプレッドシートに書き戻して正規化
     try { await gasPost('saveItems', items); } catch(e) {}  // saveAll相当
+    // ④ 未送信キューを再送
+    await retryPendingQueue();
     setSyncStatus('ok', `同期完了（${new Date().toLocaleTimeString('ja-JP')}）`);
     renderInventory();
     updateStats();
@@ -1138,12 +1171,43 @@ function filterIOItems() {
     });
   sel.innerHTML = filtered.map(i=>`<option value="${i.id}">${i.code ? i.code+' '+i.name : i.name}${i.size ? ' ('+i.size+')' : ''}</option>`).join('');
 }
-function openInOut() {
+async function openInOut() {
   document.getElementById('io-cat').value = '';
   filterIOItems();
   ['io-qty','io-person','io-note'].forEach(id=>document.getElementById(id).value='');
   document.querySelector('input[name="io-type"][value="入庫"]').checked=true;
   document.getElementById('modal-inout').classList.add('active');
+  // GASから最新在庫数を取得してローカルを更新
+  try {
+    const latest = await gasGet('getItems');
+    if (Array.isArray(latest) && latest.length > 0) {
+      latest.forEach(r => {
+        const item = items.find(i => String(i.id) === String(r.id));
+        if (item) item.stock = Number(r.stock) || 0;
+      });
+      saveLocal();
+      // 品目選択プルダウンの在庫数表示を更新
+      updateIOItemStock();
+    }
+  } catch(e) {}
+}
+
+function updateIOItemStock() {
+  const sel = document.getElementById('io-item');
+  const selectedId = parseInt(sel.value);
+  showCurrentStock(selectedId);
+}
+
+function showCurrentStock(itemId) {
+  const item = items.find(i => i.id === itemId);
+  const el = document.getElementById('io-current-stock');
+  if (!el) return;
+  if (item) {
+    const color = item.stock <= 0 ? 'var(--danger)' : item.stock < item.minStock ? 'var(--warning)' : 'var(--success)';
+    el.innerHTML = `現在の在庫数（最新）：<strong style="color:${color};font-size:16px">${item.stock.toLocaleString()}</strong> 個`;
+  } else {
+    el.textContent = '';
+  }
 }
 async function saveInOut() {
   const itemId=parseInt(document.getElementById('io-item').value);
@@ -1155,12 +1219,21 @@ async function saveInOut() {
   if (!person) { alert('担当者名を入力してください'); return; }
   const item=items.find(i=>i.id===itemId); if(!item) return;
 
-  // 出庫時の警告（ローカル在庫数を参考値として表示）
+  // 出庫時：GASから最新在庫数を取得してチェック
   if (type==='出庫') {
-    if (item.stock <= 0) {
-      if (!confirm(`⚠️ 在庫切れの警告\n\n「${item.code||item.name}」\n現在の在庫数（参考）：${item.stock.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
-    } else if (qty > item.stock) {
-      if (!confirm(`⚠️ 在庫数不足の警告\n\n「${item.code||item.name}」\n現在の在庫数（参考）：${item.stock.toLocaleString()}個\n出庫しようとしている数：${qty.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
+    let latestStock = item.stock;
+    try {
+      setSyncStatus('syncing', '最新在庫数を確認中...');
+      const latest = await gasGet('getItems');
+      if (Array.isArray(latest)) {
+        const r = latest.find(x => String(x.id) === String(item.id));
+        if (r) { latestStock = Number(r.stock) || 0; item.stock = latestStock; saveLocal(); }
+      }
+    } catch(e) {}
+    if (latestStock <= 0) {
+      if (!confirm(`⚠️ 在庫切れの警告\n\n「${item.code||item.name}」\n現在の在庫数（最新）：${latestStock.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
+    } else if (qty > latestStock) {
+      if (!confirm(`⚠️ 在庫数不足の警告\n\n「${item.code||item.name}」\n現在の在庫数（最新）：${latestStock.toLocaleString()}個\n出庫しようとしている数：${qty.toLocaleString()}個\n\n在庫数がマイナスになります。\n本当に続けますか？`)) return;
     }
   }
 
@@ -1277,15 +1350,16 @@ function nowTS() {
   const now = new Date();
   return `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 }
-function appendEditLog(type, item, detail, operator='') {
+async function appendEditLog(type, item, detail, operator='') {
   const log = { ts: nowTS(), type, code: item.code||'', name: item.name, detail, operator };
   editLogs.push(log);
   saveLocal();
-  fetch(GAS_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:`action=addEditLog&data=${encodeURIComponent(JSON.stringify(log))}`
-  }).catch(()=>{});
+  try {
+    await gasPost('addEditLog', log);
+  } catch(e) {
+    pendingQueue.push({ type: 'addEditLog', data: log });
+    savePending();
+  }
 }
 
 function renderEditLog() {
@@ -1338,6 +1412,12 @@ document.querySelectorAll('.overlay').forEach(el=>{ el.addEventListener('click',
 load();
 renderInventory();
 syncFromSheet();
+// ③ 5分ごとに自動同期
+setInterval(() => {
+  // モーダルが開いていない時のみ自動同期
+  const anyOpen = document.querySelector('.overlay.active');
+  if (!anyOpen) syncFromSheet();
+}, 5 * 60 * 1000);
 </script>
 </body>
 </html>
