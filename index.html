@@ -542,6 +542,7 @@ const STORAGE_KEY = 'fasna_inventory_v2';
 const LOG_KEY = 'fasna_log_v2';
 const EDITLOG_KEY = 'fasna_editlog_v1';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJgV8cEPuts0zInWxZe3J8QwRyqi5t_knsIHo9yrjDFaUB2GhCU6vO3Rcbo1qpEircPQ/exec';
+const GAS_TOKEN = 'fasna-2024-seiji-secure-token';
 
 const DEFAULT_ITEMS = [
   { id:1,  code:'DFB-M3-8SC',   name:'スペーサー 非貫通', maker:'セルジャパン',  stock:939,  minStock:1000 },
@@ -577,14 +578,14 @@ let syncStatus = 'idle'; // idle | syncing | ok | error
 
 // ===== GAS通信 =====
 async function gasGet(action) {
-  const res = await fetch(`${GAS_URL}?action=${action}`);
+  const res = await fetch(`${GAS_URL}?action=${action}&token=${GAS_TOKEN}`);
   return res.json();
 }
 async function gasPost(action, data) {
   const res = await fetch(GAS_URL, {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `action=${action}&data=${encodeURIComponent(JSON.stringify(data))}`
+    body: `action=${action}&token=${GAS_TOKEN}&data=${encodeURIComponent(JSON.stringify(data))}`
   });
   return res.json();
 }
