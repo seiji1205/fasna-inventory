@@ -1111,10 +1111,10 @@ function saveItem() {
     if (old.maker !== maker) changes.push(`メーカー：${old.maker}→${maker}`);
     if (old.minStock !== minStock) changes.push(`最低在庫数：${old.minStock}→${minStock}`);
     if (old.stock !== stock) changes.push(`在庫数：${old.stock}→${stock}`);
-    if ((old.size||'') !== size) changes.push(`サイズ：${old.size||'—'}→${size||'—'}`);
-    if ((old.hole||'') !== hole) changes.push(`下穴径：${old.hole||'—'}→${hole||'—'}`);
-    if ((old.thickness||'') !== thickness) changes.push(`適用板厚：${old.thickness||'—'}→${thickness||'—'}`);
-    if ((old.tensile||'') !== tensile) changes.push(`引張強度：${old.tensile||'—'}→${tensile||'—'}`);
+    if ((old.size||'') !== size) changes.push(`サイズ(mm)：${old.size||'—'}→${size||'—'}`);
+    if ((old.hole||'') !== hole) changes.push(`板金側下穴径(mm) +0.08 -0：${old.hole||'—'}→${hole||'—'}`);
+    if ((old.thickness||'') !== thickness) changes.push(`使用可能最小板厚(mm)：${old.thickness||'—'}→${thickness||'—'}`);
+    if ((old.tensile||'') !== tensile) changes.push(`取付穴中心と板端の最小距離(mm)：${old.tensile||'—'}→${tensile||'—'}`);
     if ((old.itemNote||'') !== itemNote) changes.push(`備考：${old.itemNote||'—'}→${itemNote||'—'}`);
     old.code=code; old.name=name; old.maker=maker; old.minStock=minStock; old.stock=stock;
     old.size=size; old.hole=hole; old.thickness=thickness; old.tensile=tensile; old.itemNote=itemNote;
@@ -1312,28 +1312,58 @@ function updateDiff(id) {
   diffEl.textContent = (diff>0?'+':'')+diff.toLocaleString();
   diffEl.style.color = diff===0?'var(--success)':diff>0?'var(--accent)':'var(--danger)';
 }
-function applyStocktake() {
+async function applyStocktake() {
   const updates = items.filter(item => {
     const inp = document.getElementById('st-'+item.id);
     return inp && inp.value !== '' && !isNaN(parseInt(inp.value));
   });
   if (!updates.length) { alert('実在庫数が入力されていません。'); return; }
+
+  // 棚卸し前にGASから最新在庫数を取得
+  setSyncStatus('syncing', '最新在庫数を確認中...');
+  let latestStocks = {};
+  try {
+    const remoteItems = await gasGet('getItems');
+    if (Array.isArray(remoteItems)) {
+      remoteItems.forEach(r => { latestStocks[String(r.id)] = Number(r.stock)||0; });
+    }
+  } catch(e) {
+    // 取得失敗時はローカル在庫数を使用
+    items.forEach(i => { latestStocks[String(i.id)] = i.stock; });
+  }
+
   const lines = updates.map(item => {
+    const currentStock = latestStocks[String(item.id)] ?? item.stock;
     const newVal = parseInt(document.getElementById('st-'+item.id).value);
-    const diff = newVal - item.stock;
-    return `${item.code||'—'} ${item.name}：${item.stock}→${newVal}（${diff>=0?'+':''}${diff}）`;
+    const diff = newVal - currentStock;
+    return `${item.code||'—'} ${item.name}：${currentStock}→${newVal}（${diff>=0?'+':''}${diff}）`;
   }).join('\n');
   if (!confirm(`以下の品目の在庫数を更新しますか？\n\n${lines}`)) return;
+
   const now = new Date();
   const ts = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  updates.forEach(item => {
+  const operator = prompt('棚卸し実施者名を入力してください：') || '棚卸し';
+
+  // 棚卸し調整を入出庫ログに記録（都度集計方式：stock直接書き換えなし）
+  for (const item of updates) {
+    const currentStock = latestStocks[String(item.id)] ?? item.stock;
     const newVal = parseInt(document.getElementById('st-'+item.id).value);
-    const diff = newVal - item.stock;
-    logs.push({ts, id:item.id, code:item.code||'', name:item.name, type:'棚卸し', qty:diff, person:'棚卸し', note:`棚卸し調整 ${item.stock}→${newVal}`});
-    item.stock = newVal;
-  });
-  saveAll();
-  alert('在庫数を更新しました。');
+    const diff = newVal - currentStock;
+    if (diff === 0) continue; // 差異なしはスキップ
+    const log = {ts, id:item.id, code:item.code||'', name:item.name, type:'棚卸し', qty:diff, person:operator, note:`棚卸し調整 ${currentStock}→${newVal}`};
+    logs.push(log);
+    item.stock = newVal; // ローカル表示用のみ更新
+    // GASのログに追記
+    try {
+      await gasPost('addLog', log);
+    } catch(e) {
+      pendingQueue.push({ type: 'addLog', data: log });
+      savePending();
+    }
+  }
+  saveLocal();
+  setSyncStatus('ok', `棚卸し完了（${new Date().toLocaleTimeString('ja-JP')}）`);
+  alert('棚卸しを完了しました。\n在庫数はログから再集計されます。');
   renderStocktake();
 }
 
