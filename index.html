@@ -578,14 +578,19 @@ let syncStatus = 'idle'; // idle | syncing | ok | error
 
 // ===== GAS通信 =====
 async function gasGet(action) {
-  const res = await fetch(`${GAS_URL}?action=${action}&token=${GAS_TOKEN}`);
+  const res = await fetch(`${GAS_URL}?action=${action}&token=${GAS_TOKEN}`, {
+    method: 'GET',
+    redirect: 'follow',
+  });
   return res.json();
 }
+
 async function gasPost(action, data) {
-  const res = await fetch(GAS_URL, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `action=${action}&token=${GAS_TOKEN}&data=${encodeURIComponent(JSON.stringify(data))}`
+  // GASはPOSTのCORSに問題が起きるためGETで送信
+  const params = `action=${action}&token=${GAS_TOKEN}&data=${encodeURIComponent(JSON.stringify(data))}`;
+  const res = await fetch(`${GAS_URL}?${params}`, {
+    method: 'GET',
+    redirect: 'follow',
   });
   return res.json();
 }
