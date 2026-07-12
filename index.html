@@ -567,9 +567,10 @@ const DEFAULT_ITEMS = [
   { id:20, code:'PC-M6-3',      name:'ナット',            maker:'スタッドテック', stock:1375, minStock:500  },
 ];
 
-// ユニークID生成（タイムスタンプ+ランダムで端末間の競合を防ぐ）
+// ユニークID生成（連番・スプレッドシートと整合性を保つ）
 function generateId() {
-  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  const maxId = items.reduce((max, i) => Math.max(max, Number(i.id)||0), 0);
+  return maxId + 1;
 }
 
 let items = [], logs = [], editLogs = [], editingId = null, nextId = 100;
@@ -1117,7 +1118,7 @@ function openEditItem(id) {
   document.getElementById('f-note').value = item.itemNote||'';
   document.getElementById('modal-item').classList.add('active');
 }
-function saveItem() {
+async function saveItem() {
   const code = document.getElementById('f-code').value.trim();
   const name = document.getElementById('f-name').value.trim();
   const maker = document.getElementById('f-maker').value.trim();
@@ -1148,7 +1149,18 @@ function saveItem() {
     old.size=size; old.hole=hole; old.thickness=thickness; old.tensile=tensile; old.itemNote=itemNote;
     appendEditLog('品目編集', old, changes.length ? changes.join(' / ') : '変更なし', operator);
   } else {
-    const newItem = {id:generateId(), code, name, maker, stock, minStock, ordered:false, arrivalDate:'', size, hole, thickness, tensile, itemNote};
+    // GASから最新の最大IDを取得して連番を確実に発番
+    let newId = generateId();
+    try {
+      setSyncStatus('syncing', 'ID確認中...');
+      const remoteItems = await gasGet('getItems');
+      if (Array.isArray(remoteItems) && remoteItems.length > 0) {
+        const maxRemoteId = remoteItems.reduce((max, i) => Math.max(max, Number(i.id)||0), 0);
+        const maxLocalId = items.reduce((max, i) => Math.max(max, Number(i.id)||0), 0);
+        newId = Math.max(maxRemoteId, maxLocalId) + 1;
+      }
+    } catch(e) {}
+    const newItem = {id:newId, code, name, maker, stock, minStock, ordered:false, arrivalDate:'', arrivalQty:0, size, hole, thickness, tensile, itemNote, inactive:false};
     items.push(newItem);
     appendEditLog('品目追加', newItem, `品番:${code||'—'} 品名:${name} メーカー:${maker}`, operator);
   }
