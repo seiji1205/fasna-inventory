@@ -694,11 +694,11 @@ async function appendEditLog(log) {
 async function syncFromSheet() {
   setSyncStatus('syncing', 'スプレッドシートから読込中...');
   try {
-    const [remoteItems, remoteLogs, remoteEditLogs] = await Promise.all([
-      gasGet('getItems'),
-      gasGet('getLogs'),
-      gasGet('getEditLogs'),
-    ]);
+    // GASは同時リクエストに弱いため順番に取得
+    const remoteItems    = await gasGet('getItems');
+    const remoteLogs     = await gasGet('getLogs');
+    const remoteEditLogs = await gasGet('getEditLogs');
+
     if (Array.isArray(remoteItems) && remoteItems.length > 0) {
       const mapped = remoteItems.map(i => ({
         ...i,
@@ -709,7 +709,7 @@ async function syncFromSheet() {
         ordered: i.ordered === true || i.ordered === 'TRUE' || i.ordered === 'true',
         inactive: i.inactive === true || i.inactive === 'TRUE' || i.inactive === 'true',
       }));
-      // IDの重複を除去（IDと品番+品名の両方でチェック）
+      // IDの重複を除去
       const seenIds = new Set();
       const seenKeys = new Set();
       const deduped = mapped.filter(i => {
@@ -722,23 +722,22 @@ async function syncFromSheet() {
       const hadDuplicates = deduped.length < mapped.length;
       items = deduped;
       nextId = Math.max(...items.map(i=>i.id)) + 1;
-      // 重複があった時のみスプレッドシートに書き戻す
       if (hadDuplicates) {
         try {
           await gasPost('saveItems', items);
-          console.log(`重複${mapped.length - deduped.length}件を除去してスプレッドシートを更新しました`);
+          console.log(`重複${mapped.length - deduped.length}件を除去しました`);
         } catch(e) {}
       }
     }
     if (Array.isArray(remoteLogs)) logs = remoteLogs.map(l => ({...l, qty: Number(l.qty)||0}));
     if (Array.isArray(remoteEditLogs)) editLogs = remoteEditLogs;
     saveLocal();
-    // ④ 未送信キューを再送
     await retryPendingQueue();
     setSyncStatus('ok', `同期完了（${new Date().toLocaleTimeString('ja-JP')}）`);
     renderInventory();
     updateStats();
   } catch(e) {
+    console.error('syncFromSheet error:', e);
     setSyncStatus('error', 'スプレッドシート接続失敗（ローカルデータを使用）');
   }
 }
