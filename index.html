@@ -843,15 +843,36 @@ const CATEGORIES = [
   { key: 'other',   label: 'その他',            test: () => true },
 ];
 
-function getCategory(item) {
+function formatTS(ts) {
+  if (!ts) return '—';
+  const s = String(ts);
+  // 既に「YYYY/MM/DD HH:MM」形式なら先頭10文字を返す
+  if (s.match(/^\d{4}\/\d{2}\/\d{2}/)) return s.slice(0,10);
+  // Unixタイムスタンプ（ミリ秒）
+  const n = Number(ts);
+  if (!isNaN(n) && n > 1000000000000) {
+    const d = new Date(n);
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  }
+  // Unixタイムスタンプ（秒）
+  if (!isNaN(n) && n > 1000000000) {
+    const d = new Date(n * 1000);
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  }
+  // Excelシリアル値（40000〜60000程度）
+  if (!isNaN(n) && n > 30000 && n < 100000) {
+    const d = new Date((n - 25569) * 86400 * 1000);
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  }
+  return s.slice(0,10);
+}
   for (const cat of CATEGORIES) { if (cat.test(item)) return cat.key; }
   return 'other';
 }
 
 function itemRowHTML(item) {
   const ll = lastLogOf(item.name);
-  const tsStr = ll ? String(ll.ts || '') : '';
-  const lastDate = tsStr ? tsStr.slice(0,10) : '—';
+  const lastDate = ll ? formatTS(ll.ts) : '—';
   const lastTypeStr = ll ? `<span style="font-size:11px;color:var(--muted);margin-left:4px">${ll.type}</span>` : '';
   const st = status(item);
   const rowStyle = item.inactive ? 'opacity:0.45;' : '';
@@ -1039,7 +1060,7 @@ function renderLog() {
     const itm = items.find(i=>i.code===l.code && i.name===l.name) || items.find(i=>i.name===l.name);
     const sz = itm ? (itm.size||'—') : '—';
     return `<tr>
-    <td style="color:var(--muted);font-size:13px;white-space:nowrap">${String(l.ts||'')} </td>
+    <td style="color:var(--muted);font-size:13px;white-space:nowrap">${formatTS(l.ts)}</td>
     <td style="font-weight:600;font-size:14px;color:var(--muted);white-space:nowrap">${l.code||'—'}</td>
     <td style="font-size:14px">${l.name}</td>
     <td style="font-size:13px;color:var(--muted)">${sz}</td>
@@ -1418,7 +1439,7 @@ function renderEditLog() {
   }
   const typeColor = { '品目追加':'badge-ok', '品目編集':'badge-warning', '品目削除':'badge-danger', '使用停止':'', '使用再開':'badge-ok' };
   tbody.innerHTML = filtered.map(l => `<tr>
-    <td style="font-size:13px;color:var(--muted)">${String(l.ts||'')} </td>
+    <td style="font-size:13px;color:var(--muted)">${formatTS(l.ts)}</td>
     <td><span class="badge ${typeColor[l.type]||'badge-ok'}">${l.type}</span></td>
     <td style="font-weight:600;font-size:14px;color:var(--muted)">${l.code||'—'}</td>
     <td style="font-size:14px">${l.name}</td>
