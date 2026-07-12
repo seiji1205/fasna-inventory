@@ -866,6 +866,8 @@ function formatTS(ts) {
   }
   return s.slice(0,10);
 }
+
+function getCategory(item) {
   for (const cat of CATEGORIES) { if (cat.test(item)) return cat.key; }
   return 'other';
 }
