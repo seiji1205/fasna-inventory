@@ -729,8 +729,8 @@ async function syncFromSheet() {
         } catch(e) {}
       }
     }
-    if (Array.isArray(remoteLogs)) logs = remoteLogs.map(l => ({...l, qty: Number(l.qty)||0}));
-    if (Array.isArray(remoteEditLogs)) editLogs = remoteEditLogs;
+    if (Array.isArray(remoteLogs)) logs = remoteLogs.map(l => ({...l, ts: String(l.ts||''), qty: Number(l.qty)||0}));
+    if (Array.isArray(remoteEditLogs)) editLogs = remoteEditLogs.map(l => ({...l, ts: String(l.ts||'')}));
     saveLocal();
     await retryPendingQueue();
     setSyncStatus('ok', `同期完了（${new Date().toLocaleTimeString('ja-JP')}）`);
@@ -850,7 +850,8 @@ function getCategory(item) {
 
 function itemRowHTML(item) {
   const ll = lastLogOf(item.name);
-  const lastDate = ll ? ll.ts.slice(0,10) : '—';
+  const tsStr = ll ? String(ll.ts || '') : '';
+  const lastDate = tsStr ? tsStr.slice(0,10) : '—';
   const lastTypeStr = ll ? `<span style="font-size:11px;color:var(--muted);margin-left:4px">${ll.type}</span>` : '';
   const st = status(item);
   const rowStyle = item.inactive ? 'opacity:0.45;' : '';
@@ -1038,7 +1039,7 @@ function renderLog() {
     const itm = items.find(i=>i.code===l.code && i.name===l.name) || items.find(i=>i.name===l.name);
     const sz = itm ? (itm.size||'—') : '—';
     return `<tr>
-    <td style="color:var(--muted);font-size:13px;white-space:nowrap">${l.ts}</td>
+    <td style="color:var(--muted);font-size:13px;white-space:nowrap">${String(l.ts||'')} </td>
     <td style="font-weight:600;font-size:14px;color:var(--muted);white-space:nowrap">${l.code||'—'}</td>
     <td style="font-size:14px">${l.name}</td>
     <td style="font-size:13px;color:var(--muted)">${sz}</td>
@@ -1417,7 +1418,7 @@ function renderEditLog() {
   }
   const typeColor = { '品目追加':'badge-ok', '品目編集':'badge-warning', '品目削除':'badge-danger', '使用停止':'', '使用再開':'badge-ok' };
   tbody.innerHTML = filtered.map(l => `<tr>
-    <td style="font-size:13px;color:var(--muted)">${l.ts}</td>
+    <td style="font-size:13px;color:var(--muted)">${String(l.ts||'')} </td>
     <td><span class="badge ${typeColor[l.type]||'badge-ok'}">${l.type}</span></td>
     <td style="font-weight:600;font-size:14px;color:var(--muted)">${l.code||'—'}</td>
     <td style="font-size:14px">${l.name}</td>
