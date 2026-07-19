@@ -406,11 +406,11 @@
       <div class="table-wrap">
         <div class="table-scroll">
           <table>
-            <thead>
+            <thead style="display:none">
               <tr>
-                <th style="min-width:100px;cursor:pointer" onclick="toggleSort('stocktake','code',renderStocktake)">品番</th>
-                <th style="min-width:160px;cursor:pointer" onclick="toggleSort('stocktake','name',renderStocktake)">品名</th>
-                <th style="min-width:80px;cursor:pointer" onclick="toggleSort('stocktake','size',renderStocktake)">サイズ(mm)</th>
+                <th style="min-width:100px">品番</th>
+                <th style="min-width:160px">品名</th>
+                <th style="min-width:80px">サイズ(mm)</th>
                 <th style="min-width:100px">メーカー</th>
                 <th class="num" style="min-width:110px">現在庫数（個）</th>
                 <th style="min-width:140px">実在庫数（入力）</th>
@@ -1326,20 +1326,60 @@ async function saveInOut() {
 function renderStocktake() {
   const tbody = document.getElementById('stocktake-body');
   const ss = sortState.stocktake;
-  const stList = ss.key ? sortItems(items.filter(i=>!i.inactive), ss.key, ss.dir) : items.filter(i=>!i.inactive);
-  tbody.innerHTML = stList.map(item => {
-    const st = status(item);
-    const color = st==='danger'?'var(--danger)':st==='warning'?'var(--warning)':'var(--text)';
-    return `<tr>
-      <td style="font-weight:600;color:var(--muted);font-size:14px;white-space:nowrap">${item.code||'—'}</td>
-      <td style="font-size:15px;font-weight:500">${item.name}</td>
-      <td style="font-size:14px;color:var(--muted)">${item.size||'—'}</td>
-      <td style="font-size:14px;color:var(--muted)">${item.maker}</td>
-      <td class="num" style="font-weight:700;font-size:15px;color:${color}">${item.stock.toLocaleString()}</td>
-      <td><input type="number" min="0" placeholder="実在庫数を入力" id="st-${item.id}" style="width:140px;height:34px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);padding:0 10px;" oninput="updateDiff(${item.id})"></td>
-      <td class="num" style="font-weight:600;font-size:15px" id="diff-${item.id}">—</td>
+
+  // カテゴリー別に分類してサイズ順でソート
+  const activeItems = items.filter(i => !i.inactive);
+  const grouped = {};
+  CATEGORIES.forEach(cat => grouped[cat.key] = []);
+  activeItems.forEach(item => { grouped[getCategory(item)].push(item); });
+
+  let html = '';
+  for (const cat of CATEGORIES) {
+    let group = grouped[cat.key];
+    if (!group.length) continue;
+    // サイズ順ソート（並び替えキーが指定されていればそれを優先）
+    if (ss.key) {
+      group = sortItems(group, ss.key, ss.dir);
+    } else {
+      group = sortItems(group, 'size', 1);
+    }
+    const c = CAT_COLORS[cat.key] || CAT_COLORS.other;
+    const icon = CAT_ICONS[cat.key] || CAT_ICONS.other;
+    // カテゴリーヘッダー行
+    html += `<tr class="cat-header-row">
+      <td colspan="7" style="padding:10px 14px 8px;background:var(--bg);border-bottom:none;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:72px;height:72px;border-radius:10px;background:${c.bg};color:${c.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
+          <span style="font-size:16px;font-weight:700;color:var(--text)">${cat.label}</span>
+          <span style="font-size:12px;color:var(--muted)">${group.length}品目</span>
+        </div>
+      </td>
+    </tr>
+    <tr style="background:var(--bg);border-bottom:2px solid var(--border);">
+      <th style="padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer" onclick="toggleSort('stocktake','code',renderStocktake)">品番${sortArrow('stocktake','code')}</th>
+      <th style="padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer" onclick="toggleSort('stocktake','name',renderStocktake)">品名${sortArrow('stocktake','name')}</th>
+      <th style="padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer" onclick="toggleSort('stocktake','size',renderStocktake)">サイズ(mm)${sortArrow('stocktake','size')}</th>
+      <th style="padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted)">メーカー</th>
+      <th style="padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted);text-align:right">現在庫数（個）</th>
+      <th style="padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted)">実在庫数（入力）</th>
+      <th style="padding:7px 10px;font-size:13px;font-weight:700;color:var(--muted);text-align:right">差異</th>
     </tr>`;
-  }).join('');
+    // 各品目行
+    html += group.map(item => {
+      const st = status(item);
+      const color = st==='danger'?'var(--danger)':st==='warning'?'var(--warning)':'var(--text)';
+      return `<tr>
+        <td style="font-weight:600;color:var(--muted);font-size:14px;white-space:nowrap">${item.code||'—'}</td>
+        <td style="font-size:15px;font-weight:500">${item.name}</td>
+        <td style="font-size:14px;color:var(--muted)">${item.size||'—'}</td>
+        <td style="font-size:14px;color:var(--muted)">${item.maker}</td>
+        <td class="num" style="font-weight:700;font-size:15px;color:${color}">${item.stock.toLocaleString()}</td>
+        <td><input type="number" min="0" placeholder="実在庫数を入力" id="st-${item.id}" style="width:140px;height:34px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);padding:0 10px;" oninput="updateDiff(${item.id})"></td>
+        <td class="num" style="font-weight:600;font-size:15px" id="diff-${item.id}">—</td>
+      </tr>`;
+    }).join('');
+  }
+  tbody.innerHTML = html;
 }
 function updateDiff(id) {
   const item = items.find(i=>i.id===id); if(!item) return;
