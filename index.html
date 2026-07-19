@@ -1384,16 +1384,17 @@ async function applyStocktake() {
   const ts = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const operator = prompt('棚卸し実施者名を入力してください：') || '棚卸し';
 
-  // 棚卸し調整を入出庫ログに記録（都度集計方式：stock直接書き換えなし）
+  // 棚卸し調整を入出庫ログに記録
   for (const item of updates) {
     const currentStock = latestStocks[String(item.id)] ?? item.stock;
     const newVal = parseInt(document.getElementById('st-'+item.id).value);
     const diff = newVal - currentStock;
-    if (diff === 0) continue; // 差異なしはスキップ
-    const log = {ts, id:item.id, code:item.code||'', name:item.name, type:'棚卸し', qty:diff, person:operator, note:`棚卸し調整 ${currentStock}→${newVal}`};
+    if (diff === 0) continue;
+    // 差分ではなく「棚卸し設定」として絶対値を記録
+    // GAS側でこのtypeの場合は過去ログをリセットして絶対値として扱う
+    const log = {ts, id:item.id, code:item.code||'', name:item.name, type:'棚卸し設定', qty:newVal, person:operator, note:`棚卸し調整 ${currentStock}→${newVal}`};
     logs.push(log);
-    item.stock = newVal; // ローカル表示用のみ更新
-    // GASのログに追記
+    item.stock = newVal;
     try {
       await gasPost('addLog', log);
     } catch(e) {
